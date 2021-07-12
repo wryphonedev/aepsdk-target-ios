@@ -38,8 +38,6 @@ To add the AEPTarget Package to your application, from the Xcode menu select:
 
 Enter the URL for the AEPTarget package repository: `https://github.com/adobe/aepsdk-target-ios.git`.
 
-When prompted, make sure you change the branch to `main`. 
-
 Alternatively, if your project has a `Package.swift` file, you can add AEPTarget directly to your dependencies:
 
 ```
