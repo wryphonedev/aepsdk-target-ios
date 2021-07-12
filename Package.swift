@@ -24,7 +24,7 @@ let package = Package(
  ],
  targets: [
   .target(name: "AEPTarget",
-          dependencies: ["AEPCore", "AEPServices"],
+          dependencies: ["AEPCore", .product(name: "AEPServices", package: "AEPCore")],
           path: "AEPTarget/Sources"),
  ]
 )
