@@ -44,7 +44,7 @@ Alternatively, if your project has a `Package.swift` file, you can add AEPTarget
 
 ```
 dependencies: [
-    .package(url: "https://github.com/adobe/aepsdk-target-ios.git", .branch("main")),
+    .package(url: "https://github.com/adobe/aepsdk-target-ios.git", .upToNextMajor(from: "3.0.0"))
 ],
 targets: [
     .target(name: "YourTarget",
