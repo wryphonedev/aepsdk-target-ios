@@ -91,7 +91,7 @@ class TargetPrefetchFunctionalTests: TargetFunctionalTestsBase {
                 XCTFail()
                 return nil
             }
-            XCTAssertTrue(request.url.absoluteString.contains("https://code_123.tt.omtrdc.net/rest/v1/delivery/?client=code_123&sessionId="))
+            XCTAssertTrue(request.url.absoluteString.contains("https://acopprod3.tt.omtrdc.net/rest/v1/delivery/?client=acopprod3&sessionId="))
             XCTAssertTrue(Set(payloadDictionary.keys) == Set([
                 "id",
                 "experienceCloud",
@@ -158,7 +158,7 @@ class TargetPrefetchFunctionalTests: TargetFunctionalTestsBase {
             XCTAssertNotNil(prefetchJson["mboxes"][0]["parameters"]["a.RunMode"].stringValue)
             XCTAssertNotNil(prefetchJson["mboxes"][0]["parameters"]["a.AppID"].stringValue)
             XCTAssertNotNil(prefetchJson["mboxes"][0]["parameters"]["a.locale"].stringValue)
-            let validResponse = HTTPURLResponse(url: URL(string: "https://amsdk.tt.omtrdc.net/rest/v1/delivery")!, statusCode: 200, httpVersion: nil, headerFields: nil)
+            let validResponse = HTTPURLResponse(url: URL(string: "https://acopprod3.tt.omtrdc.net/rest/v1/delivery")!, statusCode: 200, httpVersion: nil, headerFields: nil)
             return (data: responseString.data(using: .utf8), response: validResponse, error: nil)
         }
         guard let eventListener: EventListener = mockRuntime.listeners["com.adobe.eventType.target-com.adobe.eventSource.requestContent"] else {

@@ -122,7 +122,7 @@ class TargetFunctionalTests: TargetFunctionalTestsBase {
                 XCTFail()
                 return nil
             }
-            XCTAssertTrue(request.url.absoluteString.contains("https://code_123.tt.omtrdc.net/rest/v1/delivery/?client=code_123&sessionId="))
+            XCTAssertTrue(request.url.absoluteString.contains("https://acopprod3.tt.omtrdc.net/rest/v1/delivery/?client=acopprod3&sessionId="))
             let validResponse = HTTPURLResponse(url: URL(string: "https://amsdk.tt.omtrdc.net/rest/v1/delivery")!, statusCode: 200, httpVersion: nil, headerFields: nil)
             return (data: responseString.data(using: .utf8), response: validResponse, error: nil)
         }
@@ -159,7 +159,7 @@ class TargetFunctionalTests: TargetFunctionalTestsBase {
                 XCTFail()
                 return nil
             }
-            XCTAssertTrue(request.url.absoluteString.contains("https://mboxedge35.tt.omtrdc.net/rest/v1/delivery/?client=code_123&sessionId="))
+            XCTAssertTrue(request.url.absoluteString.contains("https://mboxedge35.tt.omtrdc.net/rest/v1/delivery/?client=acopprod3&sessionId="))
             return nil
         }
         eventListener(prefetchEvent2)
@@ -271,7 +271,10 @@ class TargetFunctionalTests: TargetFunctionalTestsBase {
         mockNetworkService.resolvers.removeAll()
         mockNetworkService.mock { request in
             XCTAssertNotNil(request)
-            let requestJson = JSON(parseJSON: request.connectPayload)
+            guard let requestJson = try? JSON(data: request.connectPayload) else {
+                XCTFail("Target response should be valid for prefetch request.")
+                return nil
+            }
             XCTAssertEqual("DE03D4AD-1FFE-421F-B2F2-303BF26822C1.35_0", requestJson["id"]["tntId"].stringValue)
             XCTAssertFalse(requestJson["id"]["thirdPartyId"].exists())
             XCTAssertFalse(requestJson["id"]["customerIds"].exists())
@@ -453,7 +456,7 @@ class TargetFunctionalTests: TargetFunctionalTestsBase {
             XCTAssertNotNil(request)
             let queryMap = self.getQueryMap(url: request.url.absoluteString)
             XCTAssertEqual(queryMap["sessionId"] ?? "", storedSessionId)
-            XCTAssertTrue(request.url.absoluteString.contains("https://code_123.tt.omtrdc.net/rest/v1/delivery/?client=code_123&sessionId="))
+            XCTAssertTrue(request.url.absoluteString.contains("https://acopprod3.tt.omtrdc.net/rest/v1/delivery/?client=acopprod3&sessionId="))
             let validResponse = HTTPURLResponse(url: URL(string: "https://amsdk.tt.omtrdc.net/rest/v1/delivery")!, statusCode: 200, httpVersion: nil, headerFields: nil)
             return (data: responseString.data(using: .utf8), response: validResponse, error: nil)
         }
@@ -488,7 +491,7 @@ class TargetFunctionalTests: TargetFunctionalTestsBase {
             XCTAssertNotNil(request)
             let queryMap = self.getQueryMap(url: request.url.absoluteString)
             XCTAssertEqual(queryMap["sessionId"] ?? "", storedSessionId)
-            XCTAssertTrue(request.url.absoluteString.contains("https://mboxedge35.tt.omtrdc.net/rest/v1/delivery/?client=code_123&sessionId="))
+            XCTAssertTrue(request.url.absoluteString.contains("https://mboxedge35.tt.omtrdc.net/rest/v1/delivery/?client=acopprod3&sessionId="))
             return nil
         }
         eventListener(prefetchEvent2)

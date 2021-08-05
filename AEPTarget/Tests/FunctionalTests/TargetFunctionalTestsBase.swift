@@ -30,7 +30,7 @@ class TargetFunctionalTestsBase: XCTestCase {
 
     override func setUp() {
         // Mock data
-        mockConfigSharedState = ["target.clientCode": "code_123", "global.privacy": "optedin"]
+        mockConfigSharedState = ["target.clientCode": "acopprod3", "global.privacy": "optedin"]
         mockLifecycleData = [
             "lifecyclecontextdata":
                 [
@@ -103,9 +103,8 @@ class TargetFunctionalTestsBase: XCTestCase {
         return prettyPrintedString
     }
 
-    func payloadAsDictionary(_ payload: String?) -> [String: Any]? {
-        if let payload = payload, let data = payload.data(using: .utf8),
-           let dictionary = try? JSONSerialization.jsonObject(with: data, options: .allowFragments) as? [String: Any]
+    func payloadAsDictionary(_ payload: Data) -> [String: Any]? {
+        if let dictionary = try? JSONSerialization.jsonObject(with: payload, options: .allowFragments) as? [String: Any]
         {
             return dictionary
         }

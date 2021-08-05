@@ -16,9 +16,16 @@ import XCTest
 
 class TargetPublicAPITests: XCTestCase {
     override func setUp() {
-        MockExtension.reset()
+        // Put setup code here. This method is called before the invocation of each test method in the class.
         EventHub.shared.start()
         registerMockExtension(MockExtension.self)
+        Target.isResponseListenerRegister = false
+    }
+
+    override func tearDown() {
+        // Put teardown code here. This method is called after the invocation of each test method in the class.
+        MockExtension.reset()
+        EventHub.reset()
     }
 
     private func registerMockExtension<T: Extension>(_ type: T.Type) {
@@ -94,6 +101,7 @@ class TargetPublicAPITests: XCTestCase {
             XCTAssertEqual("unexpected error", error.description)
             expectation.fulfill()
         }
+        wait(for: [expectation], timeout: 1)
     }
 
     func testLocationDisplayed() throws {
@@ -123,29 +131,30 @@ class TargetPublicAPITests: XCTestCase {
     }
 
     func testLocationDisplayed_withEmptyMboxName() throws {
-        var dispatchedEvent = false
+        let expectation = XCTestExpectation(description: "displayedLocations should not dispatch an event for empty mboxes array.")
+        expectation.isInverted = true
+
         EventHub.shared.getExtensionContainer(MockExtension.self)?.eventListeners.clear()
-        EventHub.shared.getExtensionContainer(MockExtension.self)?.registerListener(type: EventType.target, source: EventSource.requestContent) { event in
-            if let eventData = event.data, let _ = eventData[TargetConstants.EventDataKeys.MBOX_NAMES] as? [String] {
-                dispatchedEvent = true
-            }
+        EventHub.shared.getExtensionContainer(MockExtension.self)?.registerListener(type: EventType.target, source: EventSource.requestContent) { _ in
+
+            expectation.fulfill()
         }
 
         Target.displayedLocations([], targetParameters: nil)
-        XCTAssertFalse(dispatchedEvent)
+        wait(for: [expectation], timeout: 1)
     }
 
     func testLocationClicked_withEmptyMboxName() throws {
-        var dispatchedEvent = false
+        let expectation = XCTestExpectation(description: "clickedLocation should not dispatch an event for empty mbox name.")
+        expectation.isInverted = true
+
         EventHub.shared.getExtensionContainer(MockExtension.self)?.eventListeners.clear()
-        EventHub.shared.getExtensionContainer(MockExtension.self)?.registerListener(type: EventType.target, source: EventSource.requestContent) { event in
-            if let eventData = event.data, let _ = eventData[TargetConstants.EventDataKeys.MBOX_NAME] as? [String] {
-                dispatchedEvent = true
-            }
+        EventHub.shared.getExtensionContainer(MockExtension.self)?.registerListener(type: EventType.target, source: EventSource.requestContent) { _ in
+            expectation.fulfill()
         }
 
         Target.clickedLocation("", targetParameters: nil)
-        XCTAssertFalse(dispatchedEvent)
+        wait(for: [expectation], timeout: 1)
     }
 
     func testLocationClicked() throws {
@@ -292,85 +301,188 @@ class TargetPublicAPITests: XCTestCase {
         wait(for: [expectation], timeout: 1)
     }
 
-    func test_retrieveLocationContent_withEmptyArray() throws {
-        var dispatchedRetrieveEvent = false
-        EventHub.shared.getExtensionContainer(MockExtension.self)?.registerListener(type: EventType.target, source: EventSource.requestContent) { event in
-            if let eventData = event.data, let _ = eventData[TargetConstants.EventDataKeys.LOAD_REQUESTS] {
-                dispatchedRetrieveEvent = true
-            }
+    func testRetrieveLocationContent_withEmptyArray() throws {
+        let expectation = XCTestExpectation(description: "retrieveLocationContent should not dispatch an event for empty mboxes request array.")
+        expectation.isInverted = true
+
+        EventHub.shared.getExtensionContainer(MockExtension.self)?.eventListeners.clear()
+        EventHub.shared.getExtensionContainer(MockExtension.self)?.registerListener(type: EventType.target, source: EventSource.requestContent) { _ in
+            expectation.fulfill()
         }
         Target.retrieveLocationContent([])
-        XCTAssertFalse(dispatchedRetrieveEvent)
+        wait(for: [expectation], timeout: 1)
     }
 
-    func test_retrieveLocationContent_withEmptyMboxName() throws {
-        let expectation = XCTestExpectation(description: "retrieveLocationContent should return default content if the given mbox name is empty")
-        var dispatchedRetrieveEvent = false
-        let request = TargetRequest(mboxName: "", defaultContent: "DefaultValue", targetParameters: nil, contentCallback: { content in
-            XCTAssertTrue(content == "DefaultValue")
+    func testRetrieveLocationContent_withEmptyMboxName() throws {
+        let expectation = XCTestExpectation(description: "retrieveLocationContent should return default content if the given mbox name is empty.")
+        let retrieveExpectation = XCTestExpectation(description: "retrieveLocationContent should not dispatch an event for empty mbox name.")
+        retrieveExpectation.isInverted = true
+
+        let request1 = TargetRequest(mboxName: "", defaultContent: "DefaultValue", targetParameters: nil, contentCallback: { content in
+            XCTAssertEqual("DefaultValue", content)
             expectation.fulfill()
         })
 
-        EventHub.shared.getExtensionContainer(MockExtension.self)?.registerListener(type: EventType.target, source: EventSource.requestContent) { event in
-            if let eventData = event.data, let _ = eventData[TargetConstants.EventDataKeys.LOAD_REQUESTS] {
-                dispatchedRetrieveEvent = true
-            }
+        let request2 = TargetRequest(mboxName: "", defaultContent: "DefaultValue2", targetParameters: nil, contentWithDataCallback: { content, data in
+            XCTAssertEqual("DefaultValue2", content)
+            XCTAssertNil(data)
+            expectation.fulfill()
+        })
+
+        EventHub.shared.getExtensionContainer(MockExtension.self)?.eventListeners.clear()
+        EventHub.shared.getExtensionContainer(MockExtension.self)?.registerListener(type: EventType.target, source: EventSource.requestContent) { _ in
+            retrieveExpectation.fulfill()
         }
 
-        Target.retrieveLocationContent([request])
-
-        wait(for: [expectation], timeout: 1)
-        XCTAssertFalse(dispatchedRetrieveEvent)
+        Target.retrieveLocationContent([request1, request2])
+        wait(for: [expectation, retrieveExpectation], timeout: 1)
     }
 
-    func test_retrieveLocationContent() throws {
-        let expectation1 = XCTestExpectation(description: "retrieveLocationContent should dispatch an event with someContent")
-        let expectation2 = XCTestExpectation(description: "retrieveLocationContent should dispatch an event with someContent2")
+    func testRetrieveLocationContent() throws {
+        let expectation = XCTestExpectation(description: "retrieveLocationContent should invoke the request callbacks for the given mboxes.")
+        expectation.expectedFulfillmentCount = 2
+        expectation.assertForOverFulfill = true
 
         // Mocks
         let tr1 = TargetRequest(mboxName: "Drink_1", defaultContent: "DefaultValue", targetParameters: nil, contentCallback: { content in
-            XCTAssertTrue(content == "someContent")
-            expectation1.fulfill()
+            XCTAssertEqual("someContent", content)
+            expectation.fulfill()
         })
         let pairId1 = tr1.responsePairId
+
         let tr2 = TargetRequest(mboxName: "Drink_2", defaultContent: "DefaultValue2", targetParameters: nil, contentCallback: { content in
-            XCTAssertTrue(content == "someContent2")
-            expectation2.fulfill()
+            XCTAssertEqual("someContent2", content)
+            expectation.fulfill()
         })
         let pairId2 = tr2.responsePairId
 
-        expectation1.assertForOverFulfill = true
-        expectation2.assertForOverFulfill = true
+        EventHub.shared.getExtensionContainer(MockExtension.self)?.eventListeners.clear()
         EventHub.shared.getExtensionContainer(MockExtension.self)?.registerListener(type: EventType.target, source: EventSource.requestContent) { event in
-            guard let eventData = event.data, let requests = TargetRequest.from(dictionaries: eventData[TargetConstants.EventDataKeys.LOAD_REQUESTS] as? [[String: Any]]), let parameters = TargetParameters.from(dictionary: eventData[TargetConstants.EventDataKeys.TARGET_PARAMETERS] as? [String: Any])
+            guard
+                let eventData = event.data,
+                let requests = TargetRequest.from(dictionaries: eventData["request"] as? [[String: Any]]),
+                let parameters = TargetParameters.from(dictionary: eventData["targetparams"] as? [String: Any])
             else {
-                XCTFail()
-                expectation1.fulfill()
-                expectation2.fulfill()
+                XCTFail("Event should have a valid target retrieve location content data.")
+                expectation.fulfill()
+                expectation.fulfill()
                 return
             }
             XCTAssertEqual(2, requests.count)
-            XCTAssertTrue([requests[0].name, requests[1].name].contains("Drink_1"))
-            XCTAssertTrue([requests[0].name, requests[1].name].contains("Drink_2"))
-            XCTAssertTrue([requests[0].defaultContent, requests[1].defaultContent].contains("DefaultValue"))
-            XCTAssertTrue([requests[0].defaultContent, requests[1].defaultContent].contains("DefaultValue2"))
-            XCTAssertNotNil(requests[0].responsePairId)
-            XCTAssertNotNil(requests[1].responsePairId)
+            XCTAssertEqual("Drink_1", requests[0].name)
+            XCTAssertEqual("DefaultValue", requests[0].defaultContent)
+            XCTAssertEqual(pairId1, requests[0].responsePairId)
+            XCTAssertEqual("Drink_2", requests[1].name)
+            XCTAssertEqual("DefaultValue2", requests[1].defaultContent)
+            XCTAssertEqual(pairId2, requests[1].responsePairId)
+
+            XCTAssertNotNil(parameters.profileParameters)
+            XCTAssertEqual(1, parameters.profileParameters?.count)
             XCTAssertEqual("Smith", parameters.profileParameters?["name"])
+            XCTAssertNotNil(parameters.parameters)
+            XCTAssertEqual(1, parameters.parameters?.count)
+            XCTAssertEqual("mbox_parameter_value", parameters.parameters?["mbox_parameter_key"])
 
-            EventHub.shared.dispatch(event: event.createResponseEvent(name: TargetConstants.EventName.TARGET_REQUEST_RESPONSE, type: EventType.target, source: EventSource.responseContent, data: [TargetConstants.EventDataKeys.TARGET_CONTENT: "someContent", TargetConstants.EventDataKeys.TARGET_RESPONSE_PAIR_ID: pairId1]))
+            let event1 = Event(name: "TargetRequestResponse",
+                               type: "com.adobe.eventType.target",
+                               source: "com.adobe.eventSource.responseContent",
+                               data: [
+                                   "content": "someContent",
+                                   "responsePairId": pairId1,
+                                   "responseEventId": event.id.uuidString,
+                               ])
+            EventHub.shared.dispatch(event: event1)
 
-            EventHub.shared.dispatch(event: event.createResponseEvent(name: TargetConstants.EventName.TARGET_REQUEST_RESPONSE, type: EventType.target, source: EventSource.responseContent, data: [TargetConstants.EventDataKeys.TARGET_CONTENT: "someContent2", TargetConstants.EventDataKeys.TARGET_RESPONSE_PAIR_ID: pairId2]))
-            expectation1.fulfill()
-            expectation2.fulfill()
+            let event2 = Event(name: "TargetRequestResponse",
+                               type: "com.adobe.eventType.target",
+                               source: "com.adobe.eventSource.responseContent",
+                               data: [
+                                   "content": "someContent2",
+                                   "responsePairId": pairId2,
+                                   "responseEventId": event.id.uuidString,
+                               ])
+            EventHub.shared.dispatch(event: event2)
         }
 
         Target.retrieveLocationContent([tr1, tr2], with: TargetParameters(parameters: ["mbox_parameter_key": "mbox_parameter_value"], profileParameters: ["name": "Smith"]))
 
-        wait(for: [expectation1, expectation2], timeout: 1)
+        wait(for: [expectation], timeout: 2)
     }
 
-    func test_clearPrefetchCache() {
+    func testRetrieveLocationContent_contentWithDataCallback() throws {
+        let expectation = XCTestExpectation(description: "retrieveLocationContent should invoke the request callbacks for the given mboxes.")
+        expectation.expectedFulfillmentCount = 2
+        expectation.assertForOverFulfill = true
+
+        // Mocks
+        let tr1 = TargetRequest(mboxName: "Drink_1", defaultContent: "DefaultValue", targetParameters: nil, contentWithDataCallback: { content, data in
+            XCTAssertEqual("someContent", content)
+            XCTAssertNil(data)
+            expectation.fulfill()
+        })
+        let pairId1 = tr1.responsePairId
+        let tr2 = TargetRequest(mboxName: "Drink_2", defaultContent: "DefaultValue2", targetParameters: nil) { content, data in
+            XCTAssertEqual("someContent2", content)
+            XCTAssertNil(data)
+            expectation.fulfill()
+        }
+        let pairId2 = tr2.responsePairId
+
+        EventHub.shared.getExtensionContainer(MockExtension.self)?.eventListeners.clear()
+        EventHub.shared.getExtensionContainer(MockExtension.self)?.registerListener(type: EventType.target, source: EventSource.requestContent) { event in
+            guard
+                let eventData = event.data,
+                let requests = TargetRequest.from(dictionaries: eventData["request"] as? [[String: Any]]),
+                let parameters = TargetParameters.from(dictionary: eventData["targetparams"] as? [String: Any])
+            else {
+                XCTFail("Event should have a valid target retrieve location content data.")
+                expectation.fulfill()
+                expectation.fulfill()
+                return
+            }
+
+            XCTAssertEqual(2, requests.count)
+            XCTAssertEqual("Drink_1", requests[0].name)
+            XCTAssertEqual("DefaultValue", requests[0].defaultContent)
+            XCTAssertEqual(pairId1, requests[0].responsePairId)
+            XCTAssertEqual("Drink_2", requests[1].name)
+            XCTAssertEqual("DefaultValue2", requests[1].defaultContent)
+            XCTAssertEqual(pairId2, requests[1].responsePairId)
+
+            XCTAssertNotNil(parameters.profileParameters)
+            XCTAssertEqual(1, parameters.profileParameters?.count)
+            XCTAssertEqual("Smith", parameters.profileParameters?["name"])
+            XCTAssertNotNil(parameters.parameters)
+            XCTAssertEqual(1, parameters.parameters?.count)
+            XCTAssertEqual("mbox_parameter_value", parameters.parameters?["mbox_parameter_key"])
+
+            let event1 = Event(name: "TargetRequestResponse",
+                               type: "com.adobe.eventType.target",
+                               source: "com.adobe.eventSource.responseContent",
+                               data: [
+                                   "content": "someContent",
+                                   "responsePairId": pairId1,
+                                   "responseEventId": event.id.uuidString,
+                               ])
+            EventHub.shared.dispatch(event: event1)
+
+            let event2 = Event(name: "TargetRequestResponse",
+                               type: "com.adobe.eventType.target",
+                               source: "com.adobe.eventSource.responseContent",
+                               data: [
+                                   "content": "someContent2",
+                                   "responsePairId": pairId2,
+                                   "responseEventId": event.id.uuidString,
+                               ])
+            EventHub.shared.dispatch(event: event2)
+        }
+
+        Target.retrieveLocationContent([tr1, tr2], with: TargetParameters(parameters: ["mbox_parameter_key": "mbox_parameter_value"], profileParameters: ["name": "Smith"]))
+
+        wait(for: [expectation], timeout: 2)
+    }
+
+    func testClearPrefetchCache() {
         let expectation = XCTestExpectation(description: "Should dispatch a clearPrefetchCache event")
         EventHub.shared.getExtensionContainer(MockExtension.self)?.eventListeners.clear()
         EventHub.shared.getExtensionContainer(MockExtension.self)?.registerListener(type: "com.adobe.eventType.target", source: "com.adobe.eventSource.requestReset") { event in
@@ -387,7 +499,7 @@ class TargetPublicAPITests: XCTestCase {
         wait(for: [expectation], timeout: 1)
     }
 
-    func test_setPreviewRestartDeepLink() {
+    func testSetPreviewRestartDeepLink() {
         let expectation = XCTestExpectation(description: "Should dispatch a setPreviewRestartDeepLink event")
         EventHub.shared.getExtensionContainer(MockExtension.self)?.eventListeners.clear()
         EventHub.shared.getExtensionContainer(MockExtension.self)?.registerListener(type: "com.adobe.eventType.target", source: "com.adobe.eventSource.requestContent") { event in

@@ -106,8 +106,9 @@ class TargetState {
         guard let configuration = configuration else {
             return
         }
-        if let newClientCode = configuration[TargetConstants.Configuration.SharedState.Keys.TARGET_CLIENT_CODE] as? String,
-           newClientCode != clientCode
+        if
+            let newClientCode = configuration[TargetConstants.Configuration.SharedState.Keys.TARGET_CLIENT_CODE] as? String,
+            newClientCode != clientCode
         {
             updateEdgeHost("")
         }
@@ -189,9 +190,11 @@ class TargetState {
             let name = mbox.key
             var mboxNode = mbox.value
             if !name.isEmpty, prefetchedMboxJsonDicts[name] == nil {
-                // remove not accepted keys
-                for key in LOADED_MBOX_ACCEPTED_KEYS {
-                    mboxNode.removeValue(forKey: key)
+                // Save click metrics, it will be used when sending notifications later.
+                for key in mboxNode.keys {
+                    if !LOADED_MBOX_ACCEPTED_KEYS.contains(key) {
+                        mboxNode.removeValue(forKey: key)
+                    }
                 }
                 loadedMboxJsonDicts[name] = mboxNode
             }

@@ -10,7 +10,6 @@
  governing permissions and limitations under the License.
  */
 
-import ACPCore
 import AEPAnalytics
 import AEPAssurance
 import AEPCore
@@ -26,14 +25,9 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
         // Override point for customization after application launch.
 
         MobileCore.setLogLevel(.trace)
-        MobileCore.registerExtensions([Lifecycle.self, Identity.self, Target.self, Signal.self, Analytics.self])
+        MobileCore.registerExtensions([Lifecycle.self, Identity.self, Target.self, Signal.self, Analytics.self, Assurance.self])
         MobileCore.configureWith(appId: TestConstants.LAUNCH_ID)
         MobileCore.updateConfigurationWith(configDict: ["target.previewEnabled": true])
-
-        // register AEPAssurance
-        AEPAssurance.registerExtension()
-        // need to call `ACPCore.start` in order to get ACP* extensions registered to AEPCore
-        ACPCore.start {}
 
         return true
     }

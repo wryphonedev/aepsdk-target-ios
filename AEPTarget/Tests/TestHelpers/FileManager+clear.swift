@@ -21,12 +21,6 @@ extension FileManager {
             }
 
             do {
-                try removeItem(at: URL(fileURLWithPath: "Library/Caches/com.adobe.module.edge"))
-            } catch {
-                print("ERROR DESCRIPTION: \(error)")
-            }
-
-            do {
                 try removeItem(at: URL(fileURLWithPath: "Library/Caches/com.adobe.module.identity"))
             } catch {
                 print("ERROR DESCRIPTION: \(error)")

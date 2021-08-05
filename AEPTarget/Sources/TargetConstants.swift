@@ -15,7 +15,7 @@ import Foundation
 enum TargetConstants {
     static let EXTENSION_NAME = "com.adobe.module.target"
     static let FRIENDLY_NAME = "Target"
-    static let EXTENSION_VERSION = "3.0.0"
+    static let EXTENSION_VERSION = "3.1.0"
     static let DATASTORE_NAME = EXTENSION_NAME
     static let DEFAULT_SESSION_TIMEOUT: Int = 30 * 60 // 30 mins
     static let DELIVERY_API_URL_BASE = "https://%@/rest/v1/delivery/?client=%@&sessionId=%@"
@@ -78,13 +78,19 @@ enum TargetConstants {
         static let IGNORED_SESSION_LENGTH = "a.ignoredSessionLength"
     }
 
+    enum TargetResponse {
+        static let RESPONSE_TOKENS = "responseTokens"
+        static let ANALYTICS_PAYLOAD = "analytics.payload"
+        static let CLICK_METRIC_ANALYTICS_PAYLOAD = "clickmetric.analytics.payload"
+    }
+
     enum TargetJson {
         static let OPTIONS = "options"
         static let PARAMETERS = "parameters"
         static let METRICS = "metrics"
         static let HTML = "html"
         static let JSON = "json"
-        static let ANALYTICS_PARAMETERS = "analytics"
+        static let ANALYTICS = "analytics"
         static let ANALYTICS_PAYLOAD = "payload"
         /// For A4T requests event data.
         static let SESSION_ID = "a.target.sessionId"
@@ -116,6 +122,7 @@ enum TargetConstants {
         enum Option {
             static let TYPE = "type"
             static let CONTENT = "content"
+            static let RESPONSE_TOKENS = "responseTokens"
         }
     }
 
@@ -184,6 +191,7 @@ enum TargetConstants {
         static let PRODUCT_PARAMETERS = "productparameters"
         static let PROFILE_PARAMETERS = "profileparameters"
         static let TARGET_CONTENT = "content"
+        static let TARGET_DATA_PAYLOAD = "data"
         static let TARGET_RESPONSE_PAIR_ID = "responsePairId"
         static let TARGET_RESPONSE_EVENT_ID = "responseEventId"
         // shared sate

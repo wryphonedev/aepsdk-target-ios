@@ -33,7 +33,7 @@ class TargetThirdPartyIdFunctionalTests: TargetFunctionalTestsBase {
         XCTAssertEqual(target.targetState.thirdPartyId, "mockId")
 
         let requestDataArray: [[String: Any]?] = [
-            TargetRequest(mboxName: "t_test_01", defaultContent: "default", targetParameters: TargetParameters(profileParameters: ["mbox-parameter-key1": "mbox-parameter-value1"])),
+            TargetRequest(mboxName: "t_test_01", defaultContent: "default", targetParameters: TargetParameters(profileParameters: ["mbox-parameter-key1": "mbox-parameter-value1"]), contentCallback: nil),
         ].map {
             $0.asDictionary()
         }
@@ -100,7 +100,7 @@ class TargetThirdPartyIdFunctionalTests: TargetFunctionalTestsBase {
         XCTAssertNil(target.targetState.thirdPartyId)
 
         let requestDataArray: [[String: Any]?] = [
-            TargetRequest(mboxName: "t_test_01", defaultContent: "default", targetParameters: TargetParameters(profileParameters: ["mbox-parameter-key1": "mbox-parameter-value1"])),
+            TargetRequest(mboxName: "t_test_01", defaultContent: "default", targetParameters: TargetParameters(profileParameters: ["mbox-parameter-key1": "mbox-parameter-value1"]), contentCallback: nil),
         ].map {
             $0.asDictionary()
         }

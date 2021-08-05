@@ -30,7 +30,7 @@ extension URL {
         else {
             return nil
         }
-        return queryItems.reduce([String: String]()) { (dict, queryItem) -> [String: String] in
+        return queryItems.reduce([String: String]()) { dict, queryItem -> [String: String] in
             var dict = dict
             dict[queryItem.name] = queryItem.value
             return dict

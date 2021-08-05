@@ -16,7 +16,12 @@ import Foundation
 
 @objc public extension Target {
     /// true if the response content event listener is already registered, false otherwise
-    private static var isResponseListenerRegister: Bool = false
+    #if DEBUG
+        static var isResponseListenerRegister: Bool = false
+    #else
+        private static var isResponseListenerRegister: Bool = false
+    #endif
+
     /// `Dictionary` to keep track of pending target request
     @nonobjc
     private static var pendingTargetRequest: ThreadSafeDictionary<String, TargetRequest> = ThreadSafeDictionary()
@@ -96,6 +101,8 @@ import Foundation
                 // If the callback is present call with default content
                 if let callback = request.contentCallback {
                     callback(request.defaultContent)
+                } else if let callback = request.contentWithDataCallback {
+                    callback(request.defaultContent, nil)
                 }
                 Log.debug(label: Target.LOG_TAG, "TargetRequest removed because mboxName is empty.")
                 continue
@@ -290,7 +297,7 @@ import Foundation
 
     /// Handles the response event with event name as `TargetConstants.EventName.TARGET_REQUEST_RESPONSE`
     /// - Parameters:
-    ///     - event: Response content event with content
+    ///     - event: Response content event with content and optional data payload
     private static func handleResponseEvent(_ event: Event) {
         if event.name != TargetConstants.EventName.TARGET_REQUEST_RESPONSE {
             return
@@ -311,11 +318,17 @@ import Foundation
             return
         }
 
-        guard let callback = targetRequest.contentCallback else {
+        if let callback = targetRequest.contentCallback {
+            let content = event.data?[TargetConstants.EventDataKeys.TARGET_CONTENT] as? String ?? targetRequest.defaultContent
+            callback(content)
+        } else if let callback = targetRequest.contentWithDataCallback {
+            let content = event.data?[TargetConstants.EventDataKeys.TARGET_CONTENT] as? String ?? targetRequest.defaultContent
+            let responsePayload = event.data?[TargetConstants.EventDataKeys.TARGET_DATA_PAYLOAD] as? [String: Any]
+
+            callback(content, responsePayload)
+        } else {
             Log.warning(label: LOG_TAG, "Missing callback for target request with pair id the \(responsePairId)")
             return
         }
-        let content = event.data?[TargetConstants.EventDataKeys.TARGET_CONTENT] as? String ?? targetRequest.defaultContent
-        callback(content)
     }
 }

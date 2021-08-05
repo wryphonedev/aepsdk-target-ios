@@ -68,7 +68,7 @@ class TargetClickedLocationFunctionalTests: TargetFunctionalTestsBase {
                 XCTFail()
                 return nil
             }
-            XCTAssertTrue(request.url.absoluteString.contains("https://code_123.tt.omtrdc.net/rest/v1/delivery/?client=code_123&sessionId="))
+            XCTAssertTrue(request.url.absoluteString.contains("https://acopprod3.tt.omtrdc.net/rest/v1/delivery/?client=acopprod3&sessionId="))
             XCTAssertTrue(Set(payloadDictionary.keys) == Set([
                 "id",
                 "experienceCloud",
@@ -124,7 +124,7 @@ class TargetClickedLocationFunctionalTests: TargetFunctionalTestsBase {
             XCTAssertTrue(notificationsJson.contains("\"a.AppID\""))
             XCTAssertTrue(notificationsJson.contains("\"a.locale\""))
 
-            let validResponse = HTTPURLResponse(url: URL(string: "https://amsdk.tt.omtrdc.net/rest/v1/delivery")!, statusCode: 200, httpVersion: nil, headerFields: nil)
+            let validResponse = HTTPURLResponse(url: URL(string: "https://acopprod3.tt.omtrdc.net/rest/v1/delivery")!, statusCode: 200, httpVersion: nil, headerFields: nil)
             return (data: responseString.data(using: .utf8), response: validResponse, error: nil)
         }
 
@@ -149,7 +149,7 @@ class TargetClickedLocationFunctionalTests: TargetFunctionalTestsBase {
         XCTAssertEqual("DE03D4AD-1FFE-421F-B2F2-303BF26822C1.35_0", mockRuntime.createdSharedStates[0]?["tntid"] as? String)
     }
 
-    func testLocationClicked_afterRetrievedTheSameLocationContent() {
+    func testLocationClicked_afterRetrieveLocationContentNoMetrics() {
         // mocked network response
         let responseString = """
             {
@@ -171,8 +171,7 @@ class TargetClickedLocationFunctionalTests: TargetFunctionalTestsBase {
                         "content": {
                           "key1": "value1"
                         },
-                        "type": "json",
-                        "eventToken": "uR0kIAPO+tZtIPW92S0NnWqipfsIHvVzTQxHolz2IpSCnQ9Y9OaLL2gsdrWQTvE54PwSz67rmXWmSnkXpSSS2Q=="
+                        "type": "json"
                       }
                     ],
                     "analytics" : {
@@ -185,7 +184,7 @@ class TargetClickedLocationFunctionalTests: TargetFunctionalTestsBase {
         """
 
         let requestDataArray: [[String: Any]?] = [
-            TargetRequest(mboxName: "t_test_01", defaultContent: "default", targetParameters: TargetParameters(parameters: ["mbox-parameter-key1": "mbox-parameter-value1"])),
+            TargetRequest(mboxName: "t_test_01", defaultContent: "default", targetParameters: TargetParameters(parameters: ["mbox-parameter-key1": "mbox-parameter-value1"]), contentCallback: nil),
         ].map {
             $0.asDictionary()
         }
@@ -212,7 +211,7 @@ class TargetClickedLocationFunctionalTests: TargetFunctionalTestsBase {
         let mockNetworkService = TestableNetworkService()
         ServiceProvider.shared.networkService = mockNetworkService
         mockNetworkService.mock { _ in
-            let validResponse = HTTPURLResponse(url: URL(string: "https://amsdk.tt.omtrdc.net/rest/v1/delivery")!, statusCode: 200, httpVersion: nil, headerFields: nil)
+            let validResponse = HTTPURLResponse(url: URL(string: "https://acopprod3.tt.omtrdc.net/rest/v1/delivery")!, statusCode: 200, httpVersion: nil, headerFields: nil)
             return (data: responseString.data(using: .utf8), response: validResponse, error: nil)
         }
         guard let eventListener: EventListener = mockRuntime.listeners["com.adobe.eventType.target-com.adobe.eventSource.requestContent"] else {
@@ -237,6 +236,145 @@ class TargetClickedLocationFunctionalTests: TargetFunctionalTestsBase {
         }
         // handles the location displayed event
         eventListener(locationClickedEvent)
+    }
+
+    func testLocationClicked_afterRetrieveLocationContent() {
+        // mocked network response
+        let responseString = """
+            {
+              "status": 200,
+              "id": {
+                "tntId": "DE03D4AD-1FFE-421F-B2F2-303BF26822C1.35_0",
+                "marketingCloudVisitorId": "61055260263379929267175387965071996926"
+              },
+              "requestId": "01d4a408-6978-48f7-95c6-03f04160b257",
+              "client": "acopprod3",
+              "edgeHost": "mboxedge35.tt.omtrdc.net",
+              "execute": {
+                "mboxes": [
+                  {
+                    "index": 0,
+                    "name": "t_test_01",
+                    "options": [
+                      {
+                        "content": {
+                          "key1": "value1"
+                        },
+                        "type": "json"
+                      }
+                    ],
+                    "metrics": [
+                     {
+                        "type":"click",
+                        "eventToken":"ABPi/uih7s0vo6/8kqyxjA=="
+                     }
+                    ],
+                    "analytics" : {
+                        "payload" : {"pe" : "tnt", "tnta" : "33333:1:0|12121|1,38711:1:0|1|1"}
+                    }
+                  }
+                ]
+              }
+            }
+        """
+
+        let requestDataArray: [[String: Any]?] = [
+            TargetRequest(mboxName: "t_test_01", defaultContent: "default", targetParameters: TargetParameters(parameters: ["mbox-parameter-key1": "mbox-parameter-value1"]), contentCallback: nil),
+        ].map {
+            $0.asDictionary()
+        }
+
+        let data: [String: Any] = [
+            "request": requestDataArray,
+            "targetparams": TargetParameters(profileParameters: mockProfileParam).asDictionary() as Any,
+        ]
+        let loadRequestEvent = Event(name: "TargetLoadRequest",
+                                     type: "com.adobe.eventType.target",
+                                     source: "com.adobe.eventSource.requestContent",
+                                     data: data)
+
+        // creates a configuration's shared state
+        mockRuntime.simulateSharedState(extensionName: "com.adobe.module.configuration", event: loadRequestEvent, data: (value: mockConfigSharedState, status: .set))
+
+        // creates a lifecycle's shared state
+        mockRuntime.simulateSharedState(extensionName: "com.adobe.module.lifecycle", event: loadRequestEvent, data: (value: mockLifecycleData, status: .set))
+
+        // creates an identity's shared state
+        mockRuntime.simulateSharedState(extensionName: "com.adobe.module.identity", event: loadRequestEvent, data: (value: mockIdentityData, status: .set))
+
+        // registers the event listeners for Target extension
+        target.onRegistered()
+
+        // override network service
+        let mockNetworkService = TestableNetworkService()
+        ServiceProvider.shared.networkService = mockNetworkService
+        mockNetworkService.mock { request in
+            if request.url.absoluteString.contains("https://acopprod3.tt.omtrdc.net/rest/v1/delivery/?client=acopprod3&sessionId=") {
+                let validResponse = HTTPURLResponse(url: URL(string: "https://acopprod3.tt.omtrdc.net/rest/v1/delivery")!, statusCode: 200, httpVersion: nil, headerFields: nil)
+                return (data: responseString.data(using: .utf8), response: validResponse, error: nil)
+            }
+            return nil
+        }
+
+        guard let eventListener: EventListener = mockRuntime.listeners["com.adobe.eventType.target-com.adobe.eventSource.requestContent"] else {
+            XCTFail()
+            return
+        }
+
+        XCTAssertTrue(target.readyForEvent(loadRequestEvent))
+        XCTAssertTrue(target.targetState.loadedMboxJsonDicts.isEmpty)
+        // handles retrieve location content event
+        eventListener(loadRequestEvent)
+        XCTAssertEqual(1, target.targetState.loadedMboxJsonDicts.count)
+        XCTAssertTrue(Set(target.targetState.loadedMboxJsonDicts.keys) == Set([
+            "t_test_01",
+        ]))
+
+        // Build the location data
+        let locationClickedEvent = Event(name: "TargetLocationClicked",
+                                         type: "com.adobe.eventType.target",
+                                         source: "com.adobe.eventSource.requestContent",
+                                         data: [
+                                             "name": "t_test_01",
+                                             TargetConstants.EventDataKeys.IS_LOCATION_CLICKED: true,
+                                         ])
+
+        mockNetworkService.resolvers.removeAll()
+        mockNetworkService.mock { request in
+            if !request.url.absoluteString.contains("https://mboxedge35.tt.omtrdc.net/rest/v1/delivery/?client=acopprod3&sessionId=") {
+                XCTFail("Location clicked should trigger a notification request to Target.")
+                return nil
+            }
+
+            guard let payloadDictionary = self.payloadAsDictionary(request.connectPayload) else {
+                XCTFail("Location clicked notification payload should be valid.")
+                return nil
+            }
+
+            guard let notificationsArray = payloadDictionary["notifications"] as? [[String: Any]] else {
+                XCTFail("Location clicked notification should be present in the request payload.")
+                return nil
+            }
+
+            XCTAssertEqual(1, notificationsArray.count)
+            let notification = notificationsArray[0]
+
+            let notificationId = notification["id"] as? String
+            XCTAssertEqual(false, notificationId?.isEmpty)
+
+            let tokens = notification["tokens"] as? [String]
+            XCTAssertEqual(1, tokens?.count)
+            XCTAssertEqual("ABPi/uih7s0vo6/8kqyxjA==", tokens?[0])
+            XCTAssertEqual("click", notification["type"] as? String)
+
+            let mbox = notification["mbox"] as? [String: Any]
+            XCTAssertEqual("t_test_01", mbox?["name"] as? String)
+
+            return nil
+        }
+
+        // simulate location clicked event
+        mockRuntime.simulateComingEvent(event: locationClickedEvent)
     }
 
     func testLocationClicked_withoutPrefetchedMbox() {
@@ -299,7 +437,7 @@ class TargetClickedLocationFunctionalTests: TargetFunctionalTestsBase {
         let mockNetworkService = TestableNetworkService()
         ServiceProvider.shared.networkService = mockNetworkService
         mockNetworkService.mock { _ in
-            let validResponse = HTTPURLResponse(url: URL(string: "https://amsdk.tt.omtrdc.net/rest/v1/delivery")!, statusCode: 200, httpVersion: nil, headerFields: nil)
+            let validResponse = HTTPURLResponse(url: URL(string: "https://acopprod3.tt.omtrdc.net/rest/v1/delivery")!, statusCode: 200, httpVersion: nil, headerFields: nil)
             return (data: responseString.data(using: .utf8), response: validResponse, error: nil)
         }
         guard let eventListener: EventListener = mockRuntime.listeners["com.adobe.eventType.target-com.adobe.eventSource.requestContent"] else {
@@ -379,7 +517,7 @@ class TargetClickedLocationFunctionalTests: TargetFunctionalTestsBase {
         let mockNetworkService = TestableNetworkService()
         ServiceProvider.shared.networkService = mockNetworkService
         mockNetworkService.mock { _ in
-            let validResponse = HTTPURLResponse(url: URL(string: "https://amsdk.tt.omtrdc.net/rest/v1/delivery")!, statusCode: 400, httpVersion: nil, headerFields: nil)
+            let validResponse = HTTPURLResponse(url: URL(string: "https://acopprod3.tt.omtrdc.net/rest/v1/delivery")!, statusCode: 400, httpVersion: nil, headerFields: nil)
 
             return (data: responseString.data(using: .utf8), response: validResponse, error: nil)
         }

@@ -35,9 +35,9 @@ jobs:
       # restore pods related caches
       - restore_cache:
           keys:
-            - cocoapods-cache-v1-{{ arch }}-{{ .Branch }}-{{ checksum "Podfile.lock" }}
-            - cocoapods-cache-v1-{{ arch }}-{{ .Branch }}
-            - cocoapods-cache-v1
+            - cocoapods-cache-v5-{{ arch }}-{{ .Branch }}-{{ checksum "Podfile.lock" }}
+            - cocoapods-cache-v5-{{ arch }}-{{ .Branch }}
+            - cocoapods-cache-v5
 
       # install CocoaPods - using default CocoaPods version, not the bundle
       - run:
@@ -47,7 +47,7 @@ jobs:
       # save pods related files
       - save_cache:
           name: Saving CocoaPods Cache
-          key: cocoapods-cache-v1-{{ arch }}-{{ .Branch }}-{{ checksum "Podfile.lock" }}
+          key: cocoapods-cache-v5-{{ arch }}-{{ .Branch }}-{{ checksum "Podfile.lock" }}
           paths:
             - ./Pods
             - ~/.cocoapods
@@ -76,4 +76,12 @@ jobs:
       # code coverage
       - run:
           name: Upload Code Coverage Report
-          command: bash <(curl -s https://codecov.io/bash) -v -X s3 -c -D "./build/out" -J "AEPTarget"
+          command: make codecov
+
+      # verify XCFramework archive builds
+      - run:
+          name: Build XCFramework
+          command: |
+            if [ "${CIRCLE_BRANCH}" == "main" ]; then
+              make archive
+            fi

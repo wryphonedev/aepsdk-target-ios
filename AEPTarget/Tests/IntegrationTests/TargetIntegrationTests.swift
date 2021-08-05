@@ -29,7 +29,15 @@ class TargetIntegrationTests: XCTestCase {
         EventHub.reset()
     }
 
-    override func tearDown() {}
+    override func tearDown() {
+        Target.isResponseListenerRegister = false
+        let unregisterExpectation = XCTestExpectation(description: "Unregister extension.")
+        unregisterExpectation.expectedFulfillmentCount = 1
+        MobileCore.unregisterExtension(Target.self) {
+            unregisterExpectation.fulfill()
+        }
+        wait(for: [unregisterExpectation], timeout: 1)
+    }
 
     private func waitForLatestSettledSharedState(_ extensionName: String, timeout: Double = 1, triggerEvent: Event? = nil) -> [String: Any]? {
         var sharedState: [String: Any]?
@@ -136,7 +144,7 @@ class TargetIntegrationTests: XCTestCase {
             "experienceCloud.server": "test.com",
             "global.privacy": "optedin",
             "target.server": "amsdk.tt.omtrdc.net",
-            "target.clientCode": "amsdk",
+            "target.clientCode": "acopprod3",
         ])
         guard let config = waitForLatestSettledSharedState("com.adobe.module.configuration", timeout: 2) else {
             XCTFail("failed to retrieve the latest configuration (.set)")
@@ -182,9 +190,8 @@ class TargetIntegrationTests: XCTestCase {
         ServiceProvider.shared.networkService = mockNetworkService
         mockNetworkService.mock { request in
             Log.debug(label: self.T_LOG_TAG, "request url is: \(request.url.absoluteString)")
-            if request.url.absoluteString.contains("https://amsdk.tt.omtrdc.net/rest/v1/delivery/?client=amsdk&sessionId=") {
-                if let data = request.connectPayload.data(using: .utf8),
-                   let payloadDictionary = try? JSONSerialization.jsonObject(with: data, options: .allowFragments) as? [String: Any]
+            if request.url.absoluteString.contains("https://amsdk.tt.omtrdc.net/rest/v1/delivery/?client=acopprod3&sessionId=") {
+                if let payloadDictionary = try? JSONSerialization.jsonObject(with: request.connectPayload, options: .allowFragments) as? [String: Any]
                 {
                     Log.debug(label: self.T_LOG_TAG, "request payload is: \n \(self.prettify(payloadDictionary))")
 
@@ -212,19 +219,19 @@ class TargetIntegrationTests: XCTestCase {
 //                        {
 //                          "id": "vid_id_1",
 //                          "integrationCode": "vid_type_1",
-//                          "authenticatedState": "unknown"
+//                          "authenticatedState": "authenticated"
 //                        },
 //                        {
 //                          "id": "vid_id_2",
 //                          "integrationCode": "vid_type_2",
-//                          "authenticatedState": "unknown"
+//                          "authenticatedState": "authenticated"
 //                        }
 //                      ]
 //                    }
                     let customerIdsJson = self.prettifyJsonArray(customerIds)
                     XCTAssertTrue(customerIdsJson.contains("\"integrationCode\" : \"vid_type_1\""))
                     XCTAssertTrue(customerIdsJson.contains("\"id\" : \"vid_id_2\""))
-                    XCTAssertTrue(customerIdsJson.contains("\"authenticatedState\" : \"unknown\""))
+                    XCTAssertTrue(customerIdsJson.contains("\"authenticatedState\" : \"authenticated\""))
 
                     // verify payloadDictionary["context"]
                     guard let contextDictionary = payloadDictionary["context"] as? [String: Any] else {
@@ -332,7 +339,7 @@ class TargetIntegrationTests: XCTestCase {
                     XCTFail("Failed to parse the request payload [\(request.connectPayload)] to JSON object")
                 }
                 networkRequestExpectation.fulfill()
-            } // end if request.url.absoluteString.contains("https://amsdk.tt.omtrdc.net/rest/v1/delivery/?client=amsdk&sessionId=")
+            } // end if request.url.absoluteString.contains("https://acopprod3.tt.omtrdc.net/rest/v1/delivery/?client=acopprod3&sessionId=")
             return (data: responseString.data(using: .utf8), response: validResponse, error: nil)
         }
 
@@ -362,8 +369,29 @@ class TargetIntegrationTests: XCTestCase {
               "requestId": "01d4a408-6978-48f7-95c6-03f04160b257",
               "client": "acopprod3",
               "edgeHost": "mboxedge35.tt.omtrdc.net",
-              "prefetch": {
-                "mboxes": []
+              "execute": {
+                "mboxes": [
+                  {
+                    "index": 0,
+                    "name": "t_test_01",
+                    "options": [
+                      {
+                        "content": "someContent1",
+                        "type": "html"
+                      }
+                    ]
+                  },
+                  {
+                    "index": 0,
+                    "name": "t_test_02",
+                    "options": [
+                      {
+                        "content": "someContent2",
+                        "type": "html"
+                      }
+                    ]
+                  }
+                ]
               }
             }
         """
@@ -383,20 +411,425 @@ class TargetIntegrationTests: XCTestCase {
             "experienceCloud.server": "test.com",
             "global.privacy": "optedin",
             "target.server": "amsdk.tt.omtrdc.net",
-            "target.clientCode": "amsdk",
+            "target.clientCode": "acopprod3",
         ])
 
         let targetRequestExpectation = XCTestExpectation(description: "monitor the target request")
         let mockNetworkService = TestableNetworkService()
         ServiceProvider.shared.networkService = mockNetworkService
         mockNetworkService.mock { request in
-            if request.url.absoluteString.contains("https://amsdk.tt.omtrdc.net/rest/v1/delivery/?client=amsdk&sessionId=") {
+            if request.url.absoluteString.contains("https://amsdk.tt.omtrdc.net/rest/v1/delivery/?client=acopprod3&sessionId=") {
                 return (data: responseString.data(using: .utf8), response: validResponse, error: nil)
             }
             return nil
         }
-        let retrieveRequest = TargetRequest(mboxName: "t_test_01", defaultContent: "default_content") { content in
-            XCTAssertEqual("default_content", content)
+        let retrieveRequest1 = TargetRequest(mboxName: "t_test_01",
+                                             defaultContent: "default_content1") { content in
+            XCTAssertEqual("someContent1", content)
+            targetRequestExpectation.fulfill()
+        }
+        let retrieveRequest2 = TargetRequest(mboxName: "t_test_02",
+                                             defaultContent: "default_content2") { content, data in
+            XCTAssertEqual("someContent2", content)
+            XCTAssertNil(data)
+            targetRequestExpectation.fulfill()
+        }
+        Target.retrieveLocationContent([retrieveRequest1, retrieveRequest2])
+        wait(for: [targetRequestExpectation], timeout: 1)
+    }
+
+    func testRetrieveLocationContent_defaultContentWhenNoTargetResponseContent() {
+        let responseString = """
+            {
+              "status": 200,
+              "id": {
+                "tntId": "DE03D4AD-1FFE-421F-B2F2-303BF26822C1.35_0",
+                "marketingCloudVisitorId": "61055260263379929267175387965071996926"
+              },
+              "requestId": "01d4a408-6978-48f7-95c6-03f04160b257",
+              "client": "acopprod3",
+              "edgeHost": "mboxedge35.tt.omtrdc.net",
+              "execute": {
+                "mboxes": [
+                  {
+                    "index": 0,
+                    "name": "t_test_01"
+                  },
+                  {
+                    "index": 1,
+                    "name": "t_test_02"
+                  }
+                ]
+              }
+            }
+        """
+        let validResponse = HTTPURLResponse(url: URL(string: "https://amsdk.tt.omtrdc.net/rest/v1/delivery")!, statusCode: 200, httpVersion: nil, headerFields: nil)
+
+        // init mobile SDK, register extensions
+        let initExpectation = XCTestExpectation(description: "init extensions")
+        MobileCore.setLogLevel(.trace)
+        MobileCore.registerExtensions([Target.self, Identity.self, Lifecycle.self]) {
+            initExpectation.fulfill()
+        }
+        wait(for: [initExpectation], timeout: 1)
+
+        // update the configuration's shared state
+        MobileCore.updateConfigurationWith(configDict: [
+            "experienceCloud.org": "orgid",
+            "experienceCloud.server": "test.com",
+            "global.privacy": "optedin",
+            "target.server": "amsdk.tt.omtrdc.net",
+            "target.clientCode": "acopprod3",
+        ])
+
+        let targetRequestExpectation = XCTestExpectation(description: "Should return default content when no content is returned from Target.")
+        targetRequestExpectation.expectedFulfillmentCount = 2
+        let mockNetworkService = TestableNetworkService()
+        ServiceProvider.shared.networkService = mockNetworkService
+        mockNetworkService.mock { request in
+            if request.url.absoluteString.contains("https://amsdk                                                                                            .tt.omtrdc.net/rest/v1/delivery/?client=amsdk&sessionId=") {
+                return (data: responseString.data(using: .utf8), response: validResponse, error: nil)
+            }
+            return nil
+        }
+        let retrieveRequest1 = TargetRequest(mboxName: "t_test_01",
+                                             defaultContent: "default_content1") { content in
+            XCTAssertEqual("default_content1", content)
+            targetRequestExpectation.fulfill()
+        }
+        let retrieveRequest2 = TargetRequest(mboxName: "t_test_02",
+                                             defaultContent: "default_content2") { content, data in
+            XCTAssertEqual("default_content2", content)
+            XCTAssertNil(data)
+            targetRequestExpectation.fulfill()
+        }
+        Target.retrieveLocationContent([retrieveRequest1, retrieveRequest2])
+        wait(for: [targetRequestExpectation], timeout: 1)
+    }
+
+    func testRetrieveLocationContent_defaultContentOnTargetServerError() {
+        // init mobile SDK, register extensions
+        let initExpectation = XCTestExpectation(description: "init extensions")
+        MobileCore.setLogLevel(.trace)
+        MobileCore.registerExtensions([Target.self, Identity.self, Lifecycle.self]) {
+            initExpectation.fulfill()
+        }
+        wait(for: [initExpectation], timeout: 1)
+
+        // update the configuration's shared state
+        MobileCore.updateConfigurationWith(configDict: [
+            "experienceCloud.org": "orgid",
+            "experienceCloud.server": "test.com",
+            "global.privacy": "optedin",
+            "target.server": "amsdk.tt.omtrdc.net",
+            "target.clientCode": "acopprod3",
+        ])
+
+        let targetRequestExpectation = XCTestExpectation(description: "retrieveLocationContent should return default content when response indicates server error.")
+        let mockNetworkService = TestableNetworkService()
+        ServiceProvider.shared.networkService = mockNetworkService
+        mockNetworkService.mock { request in
+            if request.url.absoluteString.contains("https://amsdk                                                                   .tt.omtrdc.net/rest/v1/delivery/?client=acopprod3&sessionId=") {
+                let response = HTTPURLResponse(url: URL(string: "https://amsdk.tt.omtrdc.net/rest/v1/delivery")!, statusCode: 500, httpVersion: nil, headerFields: nil)
+                return (data: nil, response: response, error: nil)
+            }
+            return nil
+        }
+        let retrieveRequest = TargetRequest(mboxName: "t_test_01",
+                                            defaultContent: "default_content1") { content, data in
+            XCTAssertEqual("default_content1", content)
+            XCTAssertNil(data)
+            targetRequestExpectation.fulfill()
+        }
+
+        Target.retrieveLocationContent([retrieveRequest])
+        wait(for: [targetRequestExpectation], timeout: 1)
+    }
+
+    func testRetrieveLocationContent_afterPrefetch() {
+        let responseString = """
+            {
+              "status": 200,
+              "id": {
+                "tntId": "DE03D4AD-1FFE-421F-B2F2-303BF26822C1.35_0",
+                "marketingCloudVisitorId": "61055260263379929267175387965071996926"
+              },
+              "requestId": "01d4a408-6978-48f7-95c6-03f04160b257",
+              "client": "acopprod3",
+              "edgeHost": "mboxedge35.tt.omtrdc.net",
+              "prefetch": {
+                "mboxes": [
+                  {
+                    "index": 0,
+                    "name": "t_test_01",
+                    "options": [
+                      {
+                        "content": "someContent1",
+                        "type": "html"
+                      }
+                    ],
+                    "eventToken": "uR0kIAPO+tZtIPW92S0NnWqipfsIHvVzTQxHolz2IpSCnQ9Y9OaLL2gsdrWQTvE54PwSz67rmXWmSnkXpSSS2Q=="
+                  },
+                  {
+                    "index": 1,
+                    "name": "t_test_02",
+                    "options": [
+                      {
+                        "content": "someContent2",
+                        "type": "html"
+                      }
+                    ],
+                    "eventToken": "mKH481kPwvU9+su+8rbG4GqipfsIHvVzTQxHolz2IpSCnQ9Y9OaLL2gsdrWQTvE54PwSz67rmXWmSnkXpSSS2Q=="
+                  }
+                ]
+              }
+            }
+        """
+        let validResponse = HTTPURLResponse(url: URL(string: "https://acopprod3.tt.omtrdc.net/rest/v1/delivery")!, statusCode: 200, httpVersion: nil, headerFields: nil)
+
+        // init mobile SDK, register extensions
+        let initExpectation = XCTestExpectation(description: "init extensions")
+        MobileCore.setLogLevel(.trace)
+        MobileCore.registerExtensions([Target.self, Identity.self, Lifecycle.self]) {
+            initExpectation.fulfill()
+        }
+        wait(for: [initExpectation], timeout: 1)
+
+        // update the configuration's shared state
+        MobileCore.updateConfigurationWith(configDict: [
+            "experienceCloud.org": "orgid",
+            "experienceCloud.server": "test.com",
+            "global.privacy": "optedin",
+            "target.clientCode": "acopprod3",
+        ])
+
+        let prefetchExpectation = XCTestExpectation(description: "prefetchContent should prefetch content without error.")
+        let mockNetworkService = TestableNetworkService()
+        ServiceProvider.shared.networkService = mockNetworkService
+        mockNetworkService.mock { request in
+            if request.url.absoluteString.contains("https://acopprod3.tt.omtrdc.net/rest/v1/delivery/?client=acopprod3&sessionId=") {
+                return (data: responseString.data(using: .utf8), response: validResponse, error: nil)
+            }
+
+            if request.url.absoluteString.contains("https://mboxedge35.tt.omtrdc.net/rest/v1/delivery/?client=acopprod3&sessionId=") {
+                XCTFail("retrieveLocationContant should not send a network request to Target if requested mboxes are already prefetched.")
+                return nil
+            }
+            return nil
+        }
+
+        Target.prefetchContent([
+            TargetPrefetch(name: "t_test_01", targetParameters: nil),
+            TargetPrefetch(name: "t_test_02", targetParameters: nil),
+        ]) { error in
+            if let error = error {
+                Log.error(label: self.T_LOG_TAG, "Target.prefetchContent - failed, error:  \(String(describing: error))")
+                XCTFail("Target.prefetchContent - failed, error: \(String(describing: error))")
+            }
+            prefetchExpectation.fulfill()
+        }
+        wait(for: [prefetchExpectation], timeout: 1)
+
+        let targetRequestExpectation = XCTestExpectation(description: "retrieveLocationContent should return prefetched content for the given mboxes.")
+        targetRequestExpectation.expectedFulfillmentCount = 2
+        let retrieveRequest1 = TargetRequest(mboxName: "t_test_01",
+                                             defaultContent: "default_content1") { content in
+            XCTAssertEqual("someContent1", content)
+            targetRequestExpectation.fulfill()
+        }
+        let retrieveRequest2 = TargetRequest(mboxName: "t_test_02",
+                                             defaultContent: "default_content2") { content, data in
+            XCTAssertEqual("someContent2", content)
+            XCTAssertNil(data)
+            targetRequestExpectation.fulfill()
+        }
+        Target.retrieveLocationContent([retrieveRequest1, retrieveRequest2])
+        wait(for: [targetRequestExpectation], timeout: 1)
+    }
+
+    func testRetrieveLocationContent_withA4TAndResponseTokens() {
+        let responseString = """
+            {
+              "status": 200,
+              "id": {
+                "tntId": "DE03D4AD-1FFE-421F-B2F2-303BF26822C1.35_0",
+                "marketingCloudVisitorId": "61055260263379929267175387965071996926"
+              },
+              "requestId": "01d4a408-6978-48f7-95c6-03f04160b257",
+              "client": "acopprod3",
+              "edgeHost": "mboxedge35.tt.omtrdc.net",
+              "execute": {
+                "mboxes": [
+                  {
+                    "index": 0,
+                    "name": "t_test_01",
+                    "options": [
+                      {
+                        "content": "someContent",
+                        "type": "html",
+                        "responseTokens":{
+                            "activity.name":"My test activity"
+                        }
+                      }
+                    ],
+                    "analytics":{
+                        "payload":{
+                            "pe":"tnt",
+                            "tnta":"331289:0:0|2|1,331289:0:0|32767|1"
+                        }
+                    }
+                  }
+                ]
+              }
+            }
+        """
+        let validResponse = HTTPURLResponse(url: URL(string: "https://amsdk.tt.omtrdc.net/rest/v1/delivery")!, statusCode: 200, httpVersion: nil, headerFields: nil)
+
+        // init mobile SDK, register extensions
+        let initExpectation = XCTestExpectation(description: "init extensions")
+        MobileCore.setLogLevel(.trace)
+        MobileCore.registerExtensions([Target.self, Identity.self, Lifecycle.self]) {
+            initExpectation.fulfill()
+        }
+        wait(for: [initExpectation], timeout: 1)
+
+        // update the configuration's shared state
+        MobileCore.updateConfigurationWith(configDict: [
+            "experienceCloud.org": "orgid",
+            "experienceCloud.server": "test.com",
+            "global.privacy": "optedin",
+            "target.server": "amsdk.tt.omtrdc.net",
+            "target.clientCode": "acopprod3",
+        ])
+
+        let targetRequestExpectation = XCTestExpectation(description: "retrieveLocationContent should return A4T payload and response tokens.")
+        let mockNetworkService = TestableNetworkService()
+        ServiceProvider.shared.networkService = mockNetworkService
+        mockNetworkService.mock { request in
+            if request.url.absoluteString.contains("https://amsdk.tt.omtrdc.net/rest/v1/delivery/?client=acopprod3&sessionId=") {
+                return (data: responseString.data(using: .utf8), response: validResponse, error: nil)
+            }
+            return nil
+        }
+
+        let retrieveRequest = TargetRequest(mboxName: "t_test_01",
+                                            defaultContent: "default_content") { content, data in
+            XCTAssertEqual("someContent", content)
+
+            guard let data = data else {
+                XCTFail("Data containing A4T payload and response tokens should be valid.")
+                return
+            }
+            let analyticsPayload = data["analytics.payload"] as? [String: String]
+            XCTAssertEqual(2, analyticsPayload?.count)
+            XCTAssertEqual("tnt", analyticsPayload?["pe"])
+            XCTAssertEqual("331289:0:0|2|1,331289:0:0|32767|1", analyticsPayload?["tnta"])
+
+            let responseTokens = data["responseTokens"] as? [String: String]
+            XCTAssertEqual(1, responseTokens?.count)
+            XCTAssertEqual("My test activity", responseTokens?["activity.name"])
+            targetRequestExpectation.fulfill()
+        }
+
+        Target.retrieveLocationContent([retrieveRequest])
+        wait(for: [targetRequestExpectation], timeout: 1)
+    }
+
+    func testRetrieveLocationContent_afterPrefetchwithA4TAndResponseTokens() {
+        let responseString = """
+            {
+              "status": 200,
+              "id": {
+                "tntId": "DE03D4AD-1FFE-421F-B2F2-303BF26822C1.35_0",
+                "marketingCloudVisitorId": "61055260263379929267175387965071996926"
+              },
+              "requestId": "01d4a408-6978-48f7-95c6-03f04160b257",
+              "client": "acopprod3",
+              "edgeHost": "mboxedge35.tt.omtrdc.net",
+              "prefetch": {
+                "mboxes": [
+                  {
+                    "index": 0,
+                    "name": "t_test_01",
+                    "options": [
+                      {
+                        "content": "someContent",
+                        "type": "html",
+                        "responseTokens":{
+                            "activity.name":"My test activity"
+                        },
+                        "eventToken": "uR0kIAPO+tZtIPW92S0NnWqipfsIHvVzTQxHolz2IpSCnQ9Y9OaLL2gsdrWQTvE54PwSz67rmXWmSnkXpSSS2Q=="
+                      }
+                    ],
+                    "analytics":{
+                        "payload":{
+                            "pe":"tnt",
+                            "tnta":"331289:0:0|2|1,331289:0:0|32767|1"
+                        }
+                    }
+                  }
+                ]
+              }
+            }
+        """
+        let validResponse = HTTPURLResponse(url: URL(string: "https://amsdk.tt.omtrdc.net/rest/v1/delivery")!, statusCode: 200, httpVersion: nil, headerFields: nil)
+
+        // init mobile SDK, register extensions
+        let initExpectation = XCTestExpectation(description: "init extensions")
+        MobileCore.setLogLevel(.trace)
+        MobileCore.registerExtensions([Target.self, Identity.self, Lifecycle.self]) {
+            initExpectation.fulfill()
+        }
+        wait(for: [initExpectation], timeout: 1)
+
+        // update the configuration's shared state
+        MobileCore.updateConfigurationWith(configDict: [
+            "experienceCloud.org": "orgid",
+            "experienceCloud.server": "test.com",
+            "global.privacy": "optedin",
+            "target.server": "amsdk.tt.omtrdc.net",
+            "target.clientCode": "acopprod3",
+        ])
+
+        let prefetchExpectation = XCTestExpectation(description: "Should return A4T payload and response tokens")
+        let mockNetworkService = TestableNetworkService()
+        ServiceProvider.shared.networkService = mockNetworkService
+        mockNetworkService.mock { request in
+            if request.url.absoluteString.contains("https://amsdk.tt.omtrdc.net/rest/v1/delivery/?client=acopprod3&sessionId=") {
+                return (data: responseString.data(using: .utf8), response: validResponse, error: nil)
+            }
+            return nil
+        }
+
+        Target.prefetchContent([
+            TargetPrefetch(name: "t_test_01", targetParameters: nil),
+        ],
+                               with: TargetParameters(profileParameters: ["name": "Smith"])) { error in
+            if let error = error {
+                Log.error(label: self.T_LOG_TAG, "Target.prefetchContent - failed, error:  \(String(describing: error))")
+                XCTFail("Target.prefetchContent - failed, error: \(String(describing: error))")
+            }
+            prefetchExpectation.fulfill()
+        }
+        wait(for: [prefetchExpectation], timeout: 1)
+
+        let targetRequestExpectation = XCTestExpectation(description: "retrieveLocationContent should return A4T payload and response tokens cached on prefetch.")
+        let retrieveRequest = TargetRequest(mboxName: "t_test_01",
+                                            defaultContent: "default_content") { content, data in
+            XCTAssertEqual("someContent", content)
+
+            guard let data = data else {
+                XCTFail("Data containing A4T payload and response tokens should be valid.")
+                return
+            }
+            let analyticsPayload = data["analytics.payload"] as? [String: String]
+            XCTAssertEqual(2, analyticsPayload?.count)
+            XCTAssertEqual("tnt", analyticsPayload?["pe"])
+            XCTAssertEqual("331289:0:0|2|1,331289:0:0|32767|1", analyticsPayload?["tnta"])
+
+            let responseTokens = data["responseTokens"] as? [String: String]
+            XCTAssertEqual(1, responseTokens?.count)
+            XCTAssertEqual("My test activity", responseTokens?["activity.name"])
             targetRequestExpectation.fulfill()
         }
         Target.retrieveLocationContent([retrieveRequest])
@@ -418,7 +851,7 @@ class TargetIntegrationTests: XCTestCase {
             "experienceCloud.server": "test.com",
             "global.privacy": "optedin",
             "target.server": "amsdk.tt.omtrdc.net",
-            "target.clientCode": "amsdk",
+            "target.clientCode": "acopprod3",
         ])
 
         let getErrorExpectation = XCTestExpectation(description: "init extensions")
@@ -458,7 +891,7 @@ class TargetIntegrationTests: XCTestCase {
             "experienceCloud.server": "test.com",
             "global.privacy": "optedin",
             "target.server": "amsdk.tt.omtrdc.net",
-            "target.clientCode": "amsdk",
+            "target.clientCode": "acopprod3",
         ])
 
         let getErrorExpectation = XCTestExpectation(description: "init extensions")
@@ -487,7 +920,7 @@ class TargetIntegrationTests: XCTestCase {
             "experienceCloud.server": "test.com",
             "global.privacy": "optedin",
             "target.server": "amsdk.tt.omtrdc.net",
-            "target.clientCode": "amsdk",
+            "target.clientCode": "acopprod3",
         ])
 
         Target.setThirdPartyId("third_party_id")
@@ -592,7 +1025,7 @@ class TargetIntegrationTests: XCTestCase {
             "experienceCloud.server": "test.com",
             "global.privacy": "optedin",
             "target.server": "amsdk.tt.omtrdc.net",
-            "target.clientCode": "amsdk",
+            "target.clientCode": "acopprod3",
             "analytics.server": "test.analytics.net",
             "analytics.rsids": "abc",
             "analytics.batchLimit": 0,
@@ -606,8 +1039,9 @@ class TargetIntegrationTests: XCTestCase {
         let mockNetworkService = TestableNetworkService()
         ServiceProvider.shared.networkService = mockNetworkService
         mockNetworkService.mock { request in
-            if request.url.absoluteString.contains("https://amsdk.tt.omtrdc.net/rest/v1/delivery/?client=amsdk&sessionId=") {
-                if request.connectPayload.contains("ADCKKBC") {
+            if request.url.absoluteString.contains("https://amsdk.tt.omtrdc.net/rest/v1/delivery/?client=acopprod3&sessionId=") {
+                let connectPayloadString = String(decoding: request.connectPayload, as: UTF8.self)
+                if connectPayloadString.contains("ADCKKBC") {
                     targetRequestExpectation.fulfill()
                     return nil
                 } else {
@@ -666,7 +1100,6 @@ class TargetIntegrationTests: XCTestCase {
                     "metrics": [
                       {
                         "type": "click",
-                        "selector": "#app > DIV:nth-of-type(1) > DIV:nth-of-type(2) > SECTION.section:eq(0) > DIV.container:eq(0) > FORM.col-md-4:eq(0) > DIV.form-group:eq(0) > BUTTON.btn:eq(0)",
                         "eventToken": "QPaLjCeI9qKCBUylkRQKBg=="
                       }
                     ],
@@ -718,7 +1151,7 @@ class TargetIntegrationTests: XCTestCase {
             "experienceCloud.server": "test.com",
             "global.privacy": "optedin",
             "target.server": "amsdk.tt.omtrdc.net",
-            "target.clientCode": "amsdk",
+            "target.clientCode": "acopprod3",
             "analytics.server": "test.analytics.net",
             "analytics.rsids": "abc",
             "analytics.batchLimit": 0,
@@ -732,8 +1165,9 @@ class TargetIntegrationTests: XCTestCase {
         let mockNetworkService = TestableNetworkService()
         ServiceProvider.shared.networkService = mockNetworkService
         mockNetworkService.mock { request in
-            if request.url.absoluteString.contains("https://amsdk.tt.omtrdc.net/rest/v1/delivery/?client=amsdk&sessionId=") {
-                if request.connectPayload.contains("ADCKKBC") {
+            if request.url.absoluteString.contains("https://amsdk.tt.omtrdc.net/rest/v1/delivery/?client=acopprod3&sessionId=") {
+                let connectPayloadString = String(decoding: request.connectPayload, as: UTF8.self)
+                if connectPayloadString.contains("ADCKKBC") {
                     targetRequestExpectation.fulfill()
                     return nil
                 } else {
@@ -757,5 +1191,343 @@ class TargetIntegrationTests: XCTestCase {
             )
         )
         wait(for: [targetRequestExpectation], timeout: 1)
+    }
+
+    func testClickedLocation_withA4TClickMetricForPrefetchedMbox() {
+        let responseString = """
+            {
+               "status":200,
+               "requestId":"602c9986-ae9e-48e9-b35b-45b14d589703",
+               "client":"acopprod3",
+               "id":{
+                  "tntId":"55508C70-F530-4E33-AAD2-F09BB99C5C3E.35_0",
+                  "marketingCloudVisitorId":"32943535451574954856183504879211787972"
+               },
+               "edgeHost":"mboxedge35.tt.omtrdc.net",
+               "prefetch":{
+                  "mboxes":[
+                     {
+                        "index":0,
+                        "name":"mboxName1",
+                        "state":"HGGFUlY2Hmffsj5VuZfIKvOoZVgDVZNvMSVRJkhvV+1BQzL9/VYMJF0oT8y0dzKFFVP/IVnGUuOesmpjkWvCWA==",
+                        "options":[
+                           {
+                              "content":"someContent1",
+                              "type":"html",
+                              "eventToken":"mKH481kPwvU9+su+8rbG4GqipfsIHvVzTQxHolz2IpSCnQ9Y9OaLL2gsdrWQTvE54PwSz67rmXWmSnkXpSSS2Q==",
+                              "sourceType":"target"
+                           }
+                        ],
+                        "metrics":[
+                           {
+                              "type":"click",
+                              "eventToken":"ABPi/uih7s0vo6/8kqyxjA==",
+                              "analytics":{
+                                 "payload":{
+                                    "pe":"tnt",
+                                    "tnta":"409277:0:0|32767"
+                                 }
+                              }
+                           }
+                        ],
+                        "analytics":{
+                           "payload":{
+                              "pe":"tnt",
+                              "tnta":"409277:0:0|2,409277:0:0|1"
+                           }
+                        }
+                     },
+                     {
+                        "index":1,
+                        "name":"mboxName2",
+                        "state":"HGGFUlY2Hmffsj5VuZfIKvOoZVgDVZNvMSVRJkhvV+1BQzL9/VYMJF0oT8y0dzKFFVP/IVnGUuOesmpjkWvCWA==",
+                        "options":[
+                           {
+                              "content":"someContent2",
+                              "type":"html",
+                              "eventToken":"/CB0Gnng3tuikitYzXjtYGqipfsIHvVzTQxHolz2IpSCnQ9Y9OaLL2gsdrWQTvE54PwSz67rmXWmSnkXpSSS2Q==",
+                              "sourceType":"target"
+                           }
+                        ],
+                        "analytics":{
+                           "payload":{
+                              "pe":"tnt",
+                              "tnta":"331289:0:0|2,331289:0:0|32767,331289:0:0|1"
+                           }
+                        }
+                     }
+                  ]
+               }
+            }
+        """
+
+        // init mobile SDK, register extensions
+        let initExpectation = XCTestExpectation(description: "Init extensions")
+        MobileCore.setLogLevel(.trace)
+        MobileCore.registerExtensions([Target.self, Analytics.self, Identity.self, Lifecycle.self]) {
+            initExpectation.fulfill()
+        }
+        wait(for: [initExpectation], timeout: 1)
+
+        // update the configuration's shared state
+        MobileCore.updateConfigurationWith(configDict: [
+            "experienceCloud.org": "orgid",
+            "experienceCloud.server": "test.com",
+            "global.privacy": "optedin",
+            "target.clientCode": "acopprod3",
+            "target.server": "",
+            "analytics.server": "test.analytics.net",
+            "analytics.rsids": "abc",
+            "analytics.batchLimit": 0,
+            "analytics.aamForwardingEnabled": false,
+            "analytics.backdatePreviousSessionInfo": false,
+            "analytics.offlineEnabled": false,
+            "analytics.launchHitDelay": 0,
+        ])
+
+        Analytics.clearQueue()
+        sleep(2)
+
+        let notificationExpectation = XCTestExpectation(description: "clickedLocation should send click notification to Target and hit containing a4t payload to Analytics.")
+        notificationExpectation.expectedFulfillmentCount = 2
+        let mockNetworkService = TestableNetworkService()
+        ServiceProvider.shared.networkService = mockNetworkService
+        mockNetworkService.mock { request in
+            if request.url.absoluteString.contains("https://acopprod3.tt.omtrdc.net/rest/v1/delivery/?client=acopprod3&sessionId=") {
+                let validResponse = HTTPURLResponse(url: URL(string: "https://acopprod3.tt.omtrdc.net/rest/v1/delivery")!, statusCode: 200, httpVersion: nil, headerFields: nil)
+
+                return (data: responseString.data(using: .utf8), response: validResponse, error: nil)
+            }
+
+            if request.url.absoluteString.contains("https://mboxedge35.tt.omtrdc.net/rest/v1/delivery/?client=acopprod3&sessionId=") {
+                notificationExpectation.fulfill()
+                return nil
+            }
+
+            if request.url.absoluteString.contains("https://test.analytics.net/b/ss/abc/0") {
+                notificationExpectation.fulfill()
+                return (data: nil,
+                        response: HTTPURLResponse(url: URL(string: "https://test.analytics.net/b/ss/abc/0")!,
+                                                  statusCode: 200,
+                                                  httpVersion: nil,
+                                                  headerFields: nil),
+                        error: nil)
+            }
+            return nil
+        }
+
+        let prefetchExpectation = XCTestExpectation(description: "prefetchContent should prefetch content without error.")
+        Target.prefetchContent([
+            TargetPrefetch(name: "mboxName1", targetParameters: nil),
+            TargetPrefetch(name: "mboxName2", targetParameters: nil),
+        ]) { error in
+            if let error = error {
+                Log.error(label: self.T_LOG_TAG, "Target.prefetchContent - failed, error:  \(String(describing: error))")
+                XCTFail("Target.prefetchContent - failed, error: \(String(describing: error))")
+                return
+            }
+            prefetchExpectation.fulfill()
+        }
+        wait(for: [prefetchExpectation], timeout: 1)
+
+        // In real customer scenario, there will be a display location notification request before click.
+
+        Target.clickedLocation(
+            "mboxName1",
+            targetParameters: TargetParameters(
+                parameters: nil,
+                profileParameters: nil,
+                order: TargetOrder(id: "ADCKKBC", total: 400.50, purchasedProductIds: ["34", "125"]),
+                product: TargetProduct(productId: "24D334", categoryId: "Stationary")
+            )
+        )
+        wait(for: [notificationExpectation], timeout: 2)
+    }
+
+    func testClickedLocation_withA4TClickMetricForLoadedMbox() {
+        let responseString = """
+            {
+               "status":200,
+               "requestId":"bce9dfed-5caf-41e7-9926-d84947c874fa",
+               "client":"acopprod3",
+               "id":{
+                  "tntId":"55508C70-F530-4E33-AAD2-F09BB99C5C3E.35_0",
+                  "marketingCloudVisitorId":"32943535451574954856183504879211787972"
+               },
+               "edgeHost":"mboxedge35.tt.omtrdc.net",
+               "execute":{
+                  "mboxes":[
+                     {
+                        "index":0,
+                        "name":"mboxName1",
+                        "options":[
+                           {
+                              "content":"someContent1",
+                              "type":"html",
+                              "sourceType":"target"
+                           }
+                        ],
+                        "metrics":[
+                           {
+                              "type":"click",
+                              "eventToken":"ABPi/uih7s0vo6/8kqyxjA==",
+                              "analytics":{
+                                 "payload":{
+                                    "pe":"tnt",
+                                    "tnta":"409277:0:0|32767|1"
+                                 }
+                              }
+                           }
+                        ],
+                        "analytics":{
+                           "payload":{
+                              "pe":"tnt",
+                              "tnta":"409277:0:0|2|1,409277:0:0|1|1"
+                           }
+                        }
+                     },
+                     {
+                        "index":1,
+                        "name":"mboxName2",
+                        "options":[
+                           {
+                              "content":"someContent2",
+                              "type":"html",
+                              "sourceType":"target"
+                           }
+                        ],
+                        "analytics":{
+                           "payload":{
+                              "pe":"tnt",
+                              "tnta":"331289:0:0|2|1,331289:0:0|32767|1,331289:0:0|1|1"
+                           }
+                        }
+                     }
+                  ]
+               }
+            }
+        """
+
+        // init mobile SDK, register extensions
+        let initExpectation = XCTestExpectation(description: "init extensions")
+        MobileCore.setLogLevel(.trace)
+        MobileCore.registerExtensions([Target.self, Analytics.self, Identity.self, Lifecycle.self]) {
+            initExpectation.fulfill()
+        }
+        wait(for: [initExpectation], timeout: 2)
+
+        // update the configuration's shared state
+        MobileCore.updateConfigurationWith(configDict: [
+            "experienceCloud.org": "orgid",
+            "experienceCloud.server": "test.com",
+            "global.privacy": "optedin",
+            "target.server": "",
+            "target.clientCode": "acopprod3",
+            "analytics.server": "test.analytics.net",
+            "analytics.rsids": "abc",
+            "analytics.batchLimit": 0,
+            "analytics.aamForwardingEnabled": false,
+            "analytics.backdatePreviousSessionInfo": false,
+            "analytics.offlineEnabled": false,
+            "analytics.launchHitDelay": 0,
+        ])
+
+        Analytics.clearQueue()
+        sleep(2)
+
+        let notificationExpectation = XCTestExpectation(description: "clickedLocation should send click notification to Target and hit containing a4t payload to Analytics.")
+        notificationExpectation.expectedFulfillmentCount = 2
+        let mockNetworkService = TestableNetworkService()
+        ServiceProvider.shared.networkService = mockNetworkService
+        mockNetworkService.mock { request in
+            if request.url.absoluteString.contains("https://acopprod3.tt.omtrdc.net/rest/v1/delivery/?client=acopprod3&sessionId=") {
+                let validResponse = HTTPURLResponse(url: URL(string: "https://acopprod3.tt.omtrdc.net/rest/v1/delivery")!, statusCode: 200, httpVersion: nil, headerFields: nil)
+
+                return (data: responseString.data(using: .utf8), response: validResponse, error: nil)
+            }
+
+            if request.url.absoluteString.contains("https://mboxedge35.tt.omtrdc.net/rest/v1/delivery/?client=acopprod3&sessionId=") {
+                notificationExpectation.fulfill()
+                return nil
+            }
+
+            if request.url.absoluteString.contains("https://test.analytics.net/b/ss/abc/0") {
+                notificationExpectation.fulfill()
+
+                return (data: nil,
+                        response: HTTPURLResponse(url: URL(string: "https://test.analytics.net/b/ss/abc/0")!,
+                                                  statusCode: 200,
+                                                  httpVersion: nil,
+                                                  headerFields: nil),
+                        error: nil)
+            }
+            return nil
+        }
+
+        let retrieveExpectation = XCTestExpectation(description: "retrieveLocationContent should return content and data from Target.")
+        retrieveExpectation.expectedFulfillmentCount = 2
+        retrieveExpectation.assertForOverFulfill = true
+
+        Target.retrieveLocationContent([
+            TargetRequest(mboxName: "mboxName1", defaultContent: "DefaultContent1") { content, data in
+                XCTAssertEqual("someContent1", content)
+
+                guard let data = data else {
+                    XCTFail("Data containing A4T payload should be valid.")
+                    return
+                }
+                XCTAssertEqual(2, data.count)
+
+                guard let a4tPayload = data["analytics.payload"] as? [String: String] else {
+                    XCTFail("Analytics payload should be present.")
+                    return
+                }
+                XCTAssertEqual(2, a4tPayload.count)
+                XCTAssertEqual("tnt", a4tPayload["pe"])
+                XCTAssertEqual("409277:0:0|2|1,409277:0:0|1|1", a4tPayload["tnta"])
+
+                guard let clickMetricA4tPayload = data["clickmetric.analytics.payload"] as? [String: String] else {
+                    XCTFail("Click metric Analytics payload should be present.")
+                    return
+                }
+                XCTAssertEqual(2, clickMetricA4tPayload.count)
+                XCTAssertEqual("tnt", clickMetricA4tPayload["pe"])
+                XCTAssertEqual("409277:0:0|32767|1", clickMetricA4tPayload["tnta"])
+
+                retrieveExpectation.fulfill()
+            },
+            TargetRequest(mboxName: "mboxName2", defaultContent: "DefaultContent2") { content, data in
+                XCTAssertEqual("someContent2", content)
+
+                guard let data = data else {
+                    XCTFail("Data containing A4T payload should be valid.")
+                    return
+                }
+                XCTAssertEqual(1, data.count)
+
+                guard let a4tPayload = data["analytics.payload"] as? [String: String] else {
+                    XCTFail("Analytics payload should be present.")
+                    return
+                }
+                XCTAssertEqual(2, a4tPayload.count)
+                XCTAssertEqual("tnt", a4tPayload["pe"])
+                XCTAssertEqual("331289:0:0|2|1,331289:0:0|32767|1,331289:0:0|1|1", a4tPayload["tnta"])
+
+                retrieveExpectation.fulfill()
+            },
+        ],
+                                       with: nil)
+        wait(for: [retrieveExpectation], timeout: 1)
+
+        Target.clickedLocation(
+            "mboxName1",
+            targetParameters: TargetParameters(
+                parameters: nil,
+                profileParameters: nil,
+                order: TargetOrder(id: "ADCKKBC", total: 400.50, purchasedProductIds: ["34", "125"]),
+                product: TargetProduct(productId: "24D334", categoryId: "Stationary")
+            )
+        )
+        wait(for: [notificationExpectation], timeout: 2)
     }
 }

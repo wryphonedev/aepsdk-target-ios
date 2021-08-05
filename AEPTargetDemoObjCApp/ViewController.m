@@ -36,12 +36,46 @@
     }];
 }
 
-- (IBAction)loadRequest:(id)sender {
+- (IBAction)loadRequestWithContent:(id)sender {
     AEPTargetRequestObject *request1 = [[AEPTargetRequestObject alloc] initWithMboxName:@"aep-loc-1" defaultContent:@"defaultContent" targetParameters:nil contentCallback:^(NSString * _Nullable content) {
         NSLog(@"Content is >> %@", content ?: @"nope");
     }];
     AEPTargetRequestObject *request2 = [[AEPTargetRequestObject alloc] initWithMboxName:@"aep-loc-2" defaultContent:@"defaultContent2" targetParameters:nil contentCallback:^(NSString * _Nullable content) {
         NSLog(@"Content is >> %@", content ?: @"nope");
+    }];
+    [AEPMobileTarget retrieveLocationContent:@[request1, request2] withParameters:nil];
+}
+
+- (IBAction)loadRequestWithContentAndData:(id)sender {
+    AEPTargetRequestObject *request1 = [[AEPTargetRequestObject alloc] initWithMboxName:@"aep-loc-1" defaultContent:@"defaultContent" targetParameters:nil contentWithDataCallback:^(NSString * _Nullable content, NSDictionary<NSString *,id> * _Nullable data) {
+        NSLog(@"Content is >> %@", content ?: @"nope");
+        
+        if ([data objectForKey:@"responseTokens"]) {
+            NSLog(@"Response Tokens are >> %@", data[@"responseTokens"]);
+        }
+        
+        if ([data objectForKey:@"analytics.payload"]) {
+            NSLog(@"Analytics payload is >> %@", data[@"analytics.payload"]);
+        }
+        
+        if ([data objectForKey:@"clickmetric.analytics.payload"]) {
+            NSLog(@"Click tracking Analytics payload is >> %@", data[@"clickmetric.analytics.payload"]);
+        }
+    }];
+    AEPTargetRequestObject *request2 = [[AEPTargetRequestObject alloc] initWithMboxName:@"aep-loc-2" defaultContent:@"defaultContent2" targetParameters:nil contentWithDataCallback:^(NSString * _Nullable content, NSDictionary<NSString *,id> * _Nullable data) {
+        NSLog(@"Content is >> %@", content ?: @"nope");
+        
+        if ([data objectForKey:@"responseTokens"]) {
+            NSLog(@"Response Tokens are >> %@", data[@"responseTokens"]);
+        }
+        
+        if ([data objectForKey:@"analytics.payload"]) {
+            NSLog(@"Analytics payload is >> %@", data[@"analyticspayload"]);
+        }
+        
+        if ([data objectForKey:@"clickmetric.analytics.payload"]) {
+            NSLog(@"Click tracking Analytics payload is >> %@", data[@"clickmetric.analytics.payload"]);
+        }
     }];
     [AEPMobileTarget retrieveLocationContent:@[request1, request2] withParameters:nil];
 }
@@ -93,7 +127,7 @@
 
 - (IBAction)startGriffon:(id)sender {
     if(![_griffonUrl.text isEqualToString:@""]) {
-        [AEPAssurance startSession:[NSURL URLWithString:_griffonUrl.text]];
+        [AEPMobileAssurance startSessionWithUrl:[NSURL URLWithString:_griffonUrl.text]];
     }
 }
 

@@ -24,37 +24,43 @@ struct ContentView: View {
     var body: some View {
         ScrollView {
             VStack(alignment: .center, spacing: nil, content: {
-                TextField("Griffon URL", text: $griffonUrl).multilineTextAlignment(.center)
-                Button("Connect to griffon") {
-                    startGriffon()
-                }.padding(10)
+                Group {
+                    TextField("Griffon URL", text: $griffonUrl).multilineTextAlignment(.center)
+                    Button("Connect to griffon") {
+                        startGriffon()
+                    }.padding(10)
 
-                Button("Prefetch") {
-                    prefetch()
-                }.padding(10)
+                    Button("Prefetch") {
+                        prefetch()
+                    }.padding(10)
 
-                Button("GetLocations") {
-                    getLocations()
-                }.padding(10)
+                    Button("GetLocations (using contentCallback)") {
+                        getLocations1()
+                    }.padding(10)
 
-                Button("Locations displayed") {
-                    locationDisplayed()
-                }.padding(10)
+                    Button("GetLocations (using contentWithDataCallback)") {
+                        getLocations2()
+                    }.padding(10)
 
-                Button("Location clicked") {
-                    locationClicked()
-                }.padding(10)
+                    Button("Locations displayed") {
+                        locationDisplayed()
+                    }.padding(10)
 
-                Button("Reset Experience") {
-                    resetExperience()
-                }.padding(10)
+                    Button("Location clicked") {
+                        locationClicked()
+                    }.padding(10)
 
-                Text("Third Party ID - \(thirdPartyId)")
-                Button("Get Third Party Id") {
-                    getThirdPartyId()
-                }.padding(10)
+                    Button("Reset Experience") {
+                        resetExperience()
+                    }.padding(10)
+                }
 
                 Group {
+                    Text("Third Party ID - \(thirdPartyId)")
+                    Button("Get Third Party Id") {
+                        getThirdPartyId()
+                    }.padding(10)
+
                     Text("Tnt id - \(tntId)")
                     Button("Get Tnt Id") {
                         getTntId()
@@ -66,7 +72,7 @@ struct ContentView: View {
                     }.padding(10)
 
                     Button("Clear prefetch cache") {
-                        setThirdPartyId()
+                        clearPrefetchCache()
                     }.padding(10)
 
                     Button("Enter Preview") {
@@ -79,7 +85,7 @@ struct ContentView: View {
 
     func startGriffon() {
         if let url = URL(string: griffonUrl) {
-            AEPAssurance.startSession(url)
+            Assurance.startSession(url: url)
         }
     }
 
@@ -93,19 +99,51 @@ struct ContentView: View {
         )
     }
 
-    func getLocations() {
-        Target.retrieveLocationContent([TargetRequest(mboxName: "aep-loc-1", defaultContent: "DefaultValue", targetParameters: nil, contentCallback: { content in
+    func getLocations1() {
+        Target.retrieveLocationContent([TargetRequest(mboxName: "aep-loc-1", defaultContent: "DefaultValue1", targetParameters: nil, contentCallback: { content in
                 print("------")
-                print(content ?? "")
+                print("Content: \(content ?? "")")
             }),
                                         TargetRequest(mboxName: "aep-loc-2", defaultContent: "DefaultValue2", targetParameters: nil, contentCallback: { content in
                 print("------")
-                print(content ?? "")
+                print("Content: \(content ?? "")")
             }),
                                         TargetRequest(mboxName: "aep-loc-x", defaultContent: "DefaultValuex", targetParameters: nil, contentCallback: { content in
                print("------")
-               print(content ?? "")
+               print("Content: \(content ?? "")")
            })],
+                                       with: TargetParameters(parameters: ["mbox_parameter_key": "mbox_parameter_value"], profileParameters: ["name": "Smith"], order: TargetOrder(id: "id1", total: 1.0, purchasedProductIds: ["ppId1"]), product: TargetProduct(productId: "pId1", categoryId: "cId1")))
+    }
+
+    func getLocations2() {
+        Target.retrieveLocationContent([
+            TargetRequest(mboxName: "aep-loc-1", defaultContent: "DefaultValue1", targetParameters: nil, contentWithDataCallback: { content, data in
+                print("------")
+                print("Content: \(content ?? "")")
+
+                let responseTokens = data?["responseTokens"] as? [String: String] ?? [:]
+                print("Response tokens: \(responseTokens as AnyObject)")
+
+                let analyticsPayload = data?["analytics.payload"] as? [String: String] ?? [:]
+                print("Analytics payload: \(analyticsPayload as AnyObject)")
+
+                let clickAnalyticsPayload = data?["clickmetric.analytics.payload"] as? [String: String] ?? [:]
+                print("Metrics Analytics payload (click): \(clickAnalyticsPayload as AnyObject)")
+            }),
+            TargetRequest(mboxName: "aep-loc-2", defaultContent: "DefaultValue2", targetParameters: nil, contentWithDataCallback: { content, data in
+                print("------")
+                print("Content: \(content ?? "")")
+
+                let responseTokens = data?["responseTokens"] as? [String: String] ?? [:]
+                print("Response tokens: \(responseTokens as AnyObject)")
+
+                let analyticsPayload = data?["analytics.payload"] as? [String: String] ?? [:]
+                print("Analytics payload: \(analyticsPayload as AnyObject)")
+
+                let clickAnalyticsPayload = data?["clickmetric.analytics.payload"] as? [String: String] ?? [:]
+                print("Metrics Analytics payload (click): \(clickAnalyticsPayload as AnyObject)")
+            }),
+        ],
                                        with: TargetParameters(parameters: ["mbox_parameter_key": "mbox_parameter_value"], profileParameters: ["name": "Smith"], order: TargetOrder(id: "id1", total: 1.0, purchasedProductIds: ["ppId1"]), product: TargetProduct(productId: "pId1", categoryId: "cId1")))
     }
 

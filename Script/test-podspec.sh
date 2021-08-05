@@ -28,12 +28,7 @@ echo "
 platform :ios, '10.0'
 target '$PROJECT_NAME' do
   use_frameworks!
-  pod 'AEPCore', '>= 3.1.0'
-  pod 'AEPIdentity', '>= 3.1.0'
-  pod 'AEPLifecycle', '>= 3.1.0'
-  pod 'AEPServices', '>= 3.1.0'
-  pod 'AEPRulesEngine', '~> 1.0.0'
-  pod 'AEPTarget', :path => '../'
+  pod 'AEPTarget', :path => '../AEPTarget.podspec'
 end
 " >>Podfile
 

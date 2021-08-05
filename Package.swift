@@ -20,11 +20,11 @@ let package = Package(
   .library(name: "AEPTarget", targets: ["AEPTarget"]),
  ],
  dependencies: [
-  .package(url: "https://github.com/adobe/aepsdk-core-ios.git", .upToNextMajor(from: "3.1.0"))
+  .package(url: "https://github.com/adobe/aepsdk-core-ios.git", .upToNextMajor(from: "3.1.0")),
  ],
  targets: [
   .target(name: "AEPTarget",
-          dependencies: ["AEPCore", .product(name: "AEPServices", package: "AEPCore")],
+          dependencies: ["AEPCore"],
           path: "AEPTarget/Sources"),
  ]
 )

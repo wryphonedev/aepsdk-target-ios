@@ -23,7 +23,7 @@
 - (BOOL)application:(UIApplication *)application didFinishLaunchingWithOptions:(NSDictionary *)launchOptions {
     // Override point for customization after application launch.
     [AEPMobileCore setLogLevel: AEPLogLevelTrace];
-    NSArray *extensionsToRegister = @[AEPMobileIdentity.class, AEPMobileLifecycle.class, AEPMobileTarget.class, AEPMobileAnalytics.class];
+    NSArray *extensionsToRegister = @[AEPMobileIdentity.class, AEPMobileLifecycle.class, AEPMobileTarget.class, AEPMobileAnalytics.class, AEPMobileAssurance.class];
     [AEPMobileCore registerExtensions:extensionsToRegister completion:^{
         [AEPMobileCore lifecycleStart:@{@"contextDataKey": @"contextDataVal"}];
     }];
@@ -31,11 +31,6 @@
     // Use the App id assigned to this application via Adobe Launch
     [AEPMobileCore configureWithAppId: @""];
     [AEPMobileCore updateConfiguration:@{@"target.previewEnabled": @YES}];
-    
-    [AEPAssurance registerExtension];
-    [ACPCore start:^{
-        
-    }];
     return YES;
 }
 

@@ -191,6 +191,12 @@ This API sends a batch request to the configured Target server for multiple mbox
 
 For mbox locations in the Target requests list that are not already prefetched, this API sends a batch request to the configured Target server. The content for the mbox locations that have been prefetched in a previous request are returned from the SDK, and no additional network request is made. Each Target request object in the list contains a callback function, which is invoked when content is available for its given mbox location.
 
+When using `contentWithData` callback to instantiate TargetRequest object, the following keys can be used to read response tokens and Analytics for Target (A4T) info from the data payload if available in the Target response.
+
+ - responseTokens (Response tokens)
+ - analytics.payload (A4T payload)
+ - clickmetric.analytics.payload (Click tracking A4T payload)
+
 ### Swift 
 
 #### Syntax 
@@ -226,11 +232,25 @@ static func retrieveLocationContent(_ requestArray: [TargetRequest], with target
             product: TargetProduct(productId: "24D334", categoryId: "Stationary")
         )
 
-        let request1 = TargetRequest(mboxName: "logo", defaultContent: "BlueWhale", targetParameters: TargetParameters1) { _ in
-            // do something with the received content
+        let request1 = TargetRequest(mboxName: "logo", defaultContent: "BlueWhale", targetParameters: TargetParameters1) { content in
+            if let content = content {
+                // do something with the target content.
+            }
         }
-        let request2 = TargetRequest(mboxName: "logo", defaultContent: "red", targetParameters: TargetParameters2) { _ in
-            // do something with the received content
+        let request2 = TargetRequest(mboxName: "logo", defaultContent: "red", targetParameters: TargetParameters2) { content, data in
+            if let content = content {
+                // do something with the target content.
+            }
+
+            // Read the data dictionary containing one or more of response tokens, analytics payload and click-tracking analytics payload, if available.
+            if let data = data {
+                let responseTokens = data["responseTokens"] as? [String: String] ?? [:]
+
+                let analyticsPayload = data["analytics.payload"] as? [String: String] ?? [:]
+
+                let clickMetricAnalyticsPayload = data["clickmetric.analytics.payload"] as? [String: String] ?? [:]
+                ...
+            }
         }
         Target.retrieveLocationContent([request1, request2], with: globalTargetParameters)
 ```
@@ -263,11 +283,29 @@ static func retrieveLocationContent(_ requestArray: [TargetRequest], with target
     AEPTargetParameters *targetParameters2 = [[AEPTargetParameters alloc] initWithParameters:mboxParameters2 profileParameters:nil order:order2 product:product2 ];
     
     AEPTargetRequestObject *request1 = [[AEPTargetRequestObject alloc] initWithMboxName: @"logo" defaultContent: @"BlueWhale" targetParameters: targetParameters1 contentCallback:^(NSString * _Nullable content) {
-        // do something with the received content
+            // do something with the target content.
+            NSString *targetContent = content ?: @"";
         }];
-    AEPTargetRequestObject *request2 = [[AEPTargetRequestObject alloc] initWithMboxName: @"logo" defaultContent: @"red" targetParameters: targetParameters2 contentCallback:^(NSString * _Nullable content) {
-        // do something with the received content
+    AEPTargetRequestObject *request2 = [[AEPTargetRequestObject alloc] initWithMboxName: @"logo" defaultContent: @"red" targetParameters: targetParameters2 contentWithDataCallback:^(NSString * _Nullable content, NSDictionary<NSString *,id> * _Nullable data) {
+            // do something with the target content.
+            NSString *targetContent = content ?: @"";
+
+            // Read the data dictionary containing one or more of response tokens, analytics payload and click-tracking analytics payload, if available. 
+            if ([data count] > 0) {
+                if ([data objectForKey:@"responseTokens"]) {
+                    // read response tokens
+                }
+
+                if ([data objectForKey:@"analytics.payload"]) {
+                  // read analytics payload
+                }
+
+                if ([data objectForKey:@"clickmetric.analytics.payload"]) {
+                  // read click-tracking analytics payload
+                }
+            }   
         }];
+
     // Create request object array
     NSArray *requestArray = @[request1,request2];
 

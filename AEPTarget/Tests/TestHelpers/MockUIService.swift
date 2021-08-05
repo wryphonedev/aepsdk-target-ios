@@ -35,6 +35,16 @@ class MockFloatingButton: FloatingButtonPresentable {
     func dismiss() {
         dismissCalled = true
     }
+
+    var setButtonImageCalled = false
+    func setButtonImage(imageData _: Data) {
+        setButtonImageCalled = true
+    }
+
+    var setInitialCalled = false
+    func setInitial(position _: FloatingButtonPosition) {
+        setInitialCalled = true
+    }
 }
 
 class MockUIService: UIService {

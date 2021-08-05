@@ -41,8 +41,7 @@ class TargetLoadRequestsFunctionalTests: TargetFunctionalTestsBase {
                         "content": {
                           "key1": "value1"
                         },
-                        "type": "json",
-                        "eventToken": "uR0kIAPO+tZtIPW92S0NnWqipfsIHvVzTQxHolz2IpSCnQ9Y9OaLL2gsdrWQTvE54PwSz67rmXWmSnkXpSSS2Q=="
+                        "type": "json"
                       }
                     ],
                     "analytics" : {
@@ -55,8 +54,8 @@ class TargetLoadRequestsFunctionalTests: TargetFunctionalTestsBase {
         """
 
         let requestDataArray: [[String: Any]?] = [
-            TargetRequest(mboxName: "t_test_01", defaultContent: "default", targetParameters: TargetParameters(parameters: ["mbox-parameter-key1": "mbox-parameter-value1"])),
-            TargetRequest(mboxName: "t_test_02", defaultContent: "default2", targetParameters: TargetParameters(parameters: ["mbox-parameter-key2": "mbox-parameter-value2"])),
+            TargetRequest(mboxName: "t_test_01", defaultContent: "default", targetParameters: TargetParameters(parameters: ["mbox-parameter-key1": "mbox-parameter-value1"]), contentCallback: nil),
+            TargetRequest(mboxName: "t_test_02", defaultContent: "default2", targetParameters: TargetParameters(parameters: ["mbox-parameter-key2": "mbox-parameter-value2"]), contentCallback: nil),
         ].map {
             $0.asDictionary()
         }
@@ -89,7 +88,7 @@ class TargetLoadRequestsFunctionalTests: TargetFunctionalTestsBase {
                 XCTFail()
                 return nil
             }
-            XCTAssertTrue(request.url.absoluteString.contains("https://code_123.tt.omtrdc.net/rest/v1/delivery/?client=code_123&sessionId="))
+            XCTAssertTrue(request.url.absoluteString.contains("https://acopprod3.tt.omtrdc.net/rest/v1/delivery/?client=acopprod3&sessionId="))
             XCTAssertTrue(Set(payloadDictionary.keys) == Set([
                 "id",
                 "experienceCloud",
@@ -161,7 +160,7 @@ class TargetLoadRequestsFunctionalTests: TargetFunctionalTestsBase {
             XCTAssertNotNil(executeJson["mboxes"][1]["parameters"]["a.OSVersion"].stringValue)
             XCTAssertNotNil(executeJson["mboxes"][1]["parameters"]["a.AppID"].stringValue)
             XCTAssertEqual(executeJson["mboxes"][1]["parameters"]["mbox-parameter-key2"].stringValue, "mbox-parameter-value2")
-            let validResponse = HTTPURLResponse(url: URL(string: "https://amsdk.tt.omtrdc.net/rest/v1/delivery")!, statusCode: 200, httpVersion: nil, headerFields: nil)
+            let validResponse = HTTPURLResponse(url: URL(string: "https://acopprod3.tt.omtrdc.net/rest/v1/delivery")!, statusCode: 200, httpVersion: nil, headerFields: nil)
             return (data: responseString.data(using: .utf8), response: validResponse, error: nil)
         }
         guard let eventListener: EventListener = mockRuntime.listeners["com.adobe.eventType.target-com.adobe.eventSource.requestContent"] else {
@@ -177,7 +176,7 @@ class TargetLoadRequestsFunctionalTests: TargetFunctionalTestsBase {
         XCTAssertEqual("mboxedge35.tt.omtrdc.net", target.targetState.edgeHost)
         XCTAssertEqual(1, target.targetState.loadedMboxJsonDicts.count)
         let mboxJson = prettify(target.targetState.loadedMboxJsonDicts["t_test_01"])
-        XCTAssertTrue(mboxJson.contains("\"eventToken\" : \"uR0kIAPO+tZtIPW92S0NnWqipfsIHvVzTQxHolz2IpSCnQ9Y9OaLL2gsdrWQTvE54PwSz67rmXWmSnkXpSSS2Q==\""))
+        XCTAssertTrue(mboxJson.contains("\"name\" : \"t_test_01\""))
 
         // verifies the Target's shared state
         XCTAssertEqual(1, mockRuntime.createdSharedStates.count)
@@ -186,7 +185,7 @@ class TargetLoadRequestsFunctionalTests: TargetFunctionalTestsBase {
 
     func testLoadRequestContent_withOrderParameters() {
         let requestDataArray: [[String: Any]?] = [
-            TargetRequest(mboxName: "t_test_01", defaultContent: "default", targetParameters: TargetParameters(profileParameters: ["mbox-parameter-key1": "mbox-parameter-value1"], order: TargetOrder(id: "id", total: 12.34, purchasedProductIds: ["A", "B", "C"]))),
+            TargetRequest(mboxName: "t_test_01", defaultContent: "default", targetParameters: TargetParameters(profileParameters: ["mbox-parameter-key1": "mbox-parameter-value1"], order: TargetOrder(id: "id", total: 12.34, purchasedProductIds: ["A", "B", "C"])), contentCallback: nil),
         ].map {
             $0.asDictionary()
         }
@@ -219,7 +218,7 @@ class TargetLoadRequestsFunctionalTests: TargetFunctionalTestsBase {
                 XCTFail()
                 return nil
             }
-            XCTAssertTrue(request.url.absoluteString.contains("https://code_123.tt.omtrdc.net/rest/v1/delivery/?client=code_123&sessionId="))
+            XCTAssertTrue(request.url.absoluteString.contains("https://acopprod3.tt.omtrdc.net/rest/v1/delivery/?client=acopprod3&sessionId="))
             XCTAssertTrue(Set(payloadDictionary.keys) == Set([
                 "id",
                 "experienceCloud",
@@ -296,7 +295,7 @@ class TargetLoadRequestsFunctionalTests: TargetFunctionalTestsBase {
 
     func testLoadRequestContent_withProductParameters() {
         let requestDataArray: [[String: Any]?] = [
-            TargetRequest(mboxName: "t_test_01", defaultContent: "default", targetParameters: TargetParameters(profileParameters: ["mbox-parameter-key1": "mbox-parameter-value1"], product: TargetProduct(productId: "764334", categoryId: "Online"))),
+            TargetRequest(mboxName: "t_test_01", defaultContent: "default", targetParameters: TargetParameters(profileParameters: ["mbox-parameter-key1": "mbox-parameter-value1"], product: TargetProduct(productId: "764334", categoryId: "Online")), contentCallback: nil),
         ].map {
             $0.asDictionary()
         }
@@ -329,7 +328,7 @@ class TargetLoadRequestsFunctionalTests: TargetFunctionalTestsBase {
                 XCTFail()
                 return nil
             }
-            XCTAssertTrue(request.url.absoluteString.contains("https://code_123.tt.omtrdc.net/rest/v1/delivery/?client=code_123&sessionId="))
+            XCTAssertTrue(request.url.absoluteString.contains("https://acopprod3.tt.omtrdc.net/rest/v1/delivery/?client=acopprod3&sessionId="))
             XCTAssertTrue(Set(payloadDictionary.keys) == Set([
                 "id",
                 "experienceCloud",
@@ -411,7 +410,8 @@ class TargetLoadRequestsFunctionalTests: TargetFunctionalTestsBase {
                               profileParameters: ["mbox-parameter-key1": "mbox-parameter-value1"],
                               order: TargetOrder(id: "id", total: 12.34, purchasedProductIds: ["A", "B", "C"]),
                               product: TargetProduct(productId: "764334", categoryId: "Online")
-                          )),
+                          ),
+                          contentCallback: nil),
         ].map {
             $0.asDictionary()
         }
@@ -444,7 +444,7 @@ class TargetLoadRequestsFunctionalTests: TargetFunctionalTestsBase {
                 XCTFail()
                 return nil
             }
-            XCTAssertTrue(request.url.absoluteString.contains("https://code_123.tt.omtrdc.net/rest/v1/delivery/?client=code_123&sessionId="))
+            XCTAssertTrue(request.url.absoluteString.contains("https://acopprod3.tt.omtrdc.net/rest/v1/delivery/?client=acopprod3&sessionId="))
             XCTAssertTrue(Set(payloadDictionary.keys) == Set([
                 "id",
                 "experienceCloud",
@@ -554,8 +554,8 @@ class TargetLoadRequestsFunctionalTests: TargetFunctionalTestsBase {
             }
         """
         let requestDataArray: [[String: Any]?] = [
-            TargetRequest(mboxName: "t_test_01", defaultContent: "default", targetParameters: TargetParameters(profileParameters: ["mbox-parameter-key1": "mbox-parameter-value1"])),
-            TargetRequest(mboxName: "t_test_02", defaultContent: "default2", targetParameters: TargetParameters(profileParameters: ["mbox-parameter-key1": "mbox-parameter-value1"])),
+            TargetRequest(mboxName: "t_test_01", defaultContent: "default", targetParameters: TargetParameters(profileParameters: ["mbox-parameter-key1": "mbox-parameter-value1"]), contentCallback: nil),
+            TargetRequest(mboxName: "t_test_02", defaultContent: "default2", targetParameters: TargetParameters(profileParameters: ["mbox-parameter-key1": "mbox-parameter-value1"]), contentCallback: nil),
         ].map {
             $0.asDictionary()
         }
@@ -582,7 +582,7 @@ class TargetLoadRequestsFunctionalTests: TargetFunctionalTestsBase {
         ServiceProvider.shared.networkService = mockNetworkService
 
         mockNetworkService.mock { _ in
-            let validResponse = HTTPURLResponse(url: URL(string: "https://amsdk.tt.omtrdc.net/rest/v1/delivery")!, statusCode: 400, httpVersion: nil, headerFields: nil)
+            let validResponse = HTTPURLResponse(url: URL(string: "https://acopprod3.tt.omtrdc.net/rest/v1/delivery")!, statusCode: 400, httpVersion: nil, headerFields: nil)
 
             return (data: responseString.data(using: .utf8), response: validResponse, error: nil)
         }
@@ -616,7 +616,7 @@ class TargetLoadRequestsFunctionalTests: TargetFunctionalTestsBase {
             }
         """
         let requestDataArray: [[String: Any]?] = [
-            TargetRequest(mboxName: "t_test_01", defaultContent: "default_content_123"),
+            TargetRequest(mboxName: "t_test_01", defaultContent: "default_content_123", contentCallback: nil),
         ].map {
             $0.asDictionary()
         }
@@ -642,8 +642,8 @@ class TargetLoadRequestsFunctionalTests: TargetFunctionalTestsBase {
                 XCTFail()
                 return nil
             }
-            XCTAssertTrue(request.url.absoluteString.contains("https://code_123.tt.omtrdc.net/rest/v1/delivery/?client=code_123&sessionId="))
-            let validResponse = HTTPURLResponse(url: URL(string: "https://amsdk.tt.omtrdc.net/rest/v1/delivery")!, statusCode: 200, httpVersion: nil, headerFields: nil)
+            XCTAssertTrue(request.url.absoluteString.contains("https://acopprod3.tt.omtrdc.net/rest/v1/delivery/?client=acopprod3&sessionId="))
+            let validResponse = HTTPURLResponse(url: URL(string: "https://acopprod3.tt.omtrdc.net/rest/v1/delivery")!, statusCode: 200, httpVersion: nil, headerFields: nil)
             return (data: responseString.data(using: .utf8), response: validResponse, error: nil)
         }
         guard let eventListener: EventListener = mockRuntime.listeners["com.adobe.eventType.target-com.adobe.eventSource.requestContent"] else {
@@ -684,7 +684,7 @@ class TargetLoadRequestsFunctionalTests: TargetFunctionalTestsBase {
 
         // creates a configuration's shared state
         let configuration = [
-            "target.clientCode": "code_123",
+            "target.clientCode": "acopprod3",
             "global.privacy": "optedin",
         ]
         mockRuntime.simulateSharedState(extensionName: "com.adobe.module.configuration", event: prefetchEvent, data: (value: configuration, status: .set))
@@ -698,7 +698,7 @@ class TargetLoadRequestsFunctionalTests: TargetFunctionalTestsBase {
         let mockNetworkService = TestableNetworkService()
         ServiceProvider.shared.networkService = mockNetworkService
         mockNetworkService.mock { _ in
-            let badResponse = HTTPURLResponse(url: URL(string: "https://amsdk.tt.omtrdc.net/rest/v1/delivery")!, statusCode: 500, httpVersion: nil, headerFields: nil)
+            let badResponse = HTTPURLResponse(url: URL(string: "https://acopprod3.tt.omtrdc.net/rest/v1/delivery")!, statusCode: 500, httpVersion: nil, headerFields: nil)
             networkRequestExpectation.fulfill()
             return (data: responseString.data(using: .utf8), response: badResponse, error: nil)
         }
@@ -713,7 +713,7 @@ class TargetLoadRequestsFunctionalTests: TargetFunctionalTestsBase {
         XCTAssertEqual(1, mockRuntime.dispatchedEvents.count)
         mockRuntime.resetDispatchedEventAndCreatedSharedStates()
         let requestDataArray: [[String: Any]?] = [
-            TargetRequest(mboxName: "t_test_01", defaultContent: "default_content_123"),
+            TargetRequest(mboxName: "t_test_01", defaultContent: "default_content_123", contentCallback: nil),
         ].map {
             $0.asDictionary()
         }
@@ -808,7 +808,7 @@ class TargetLoadRequestsFunctionalTests: TargetFunctionalTestsBase {
 
         // creates a configuration's shared state
         let configuration = [
-            "target.clientCode": "code_123",
+            "target.clientCode": "acopprod3",
             "global.privacy": "optedin",
         ]
         mockRuntime.simulateSharedState(extensionName: "com.adobe.module.configuration", event: prefetchEvent, data: (value: configuration, status: .set))
@@ -822,7 +822,7 @@ class TargetLoadRequestsFunctionalTests: TargetFunctionalTestsBase {
         let mockNetworkService = TestableNetworkService()
         ServiceProvider.shared.networkService = mockNetworkService
         mockNetworkService.mock { _ in
-            let badResponse = HTTPURLResponse(url: URL(string: "https://amsdk.tt.omtrdc.net/rest/v1/delivery")!, statusCode: 200, httpVersion: nil, headerFields: nil)
+            let badResponse = HTTPURLResponse(url: URL(string: "https://acopprod3.tt.omtrdc.net/rest/v1/delivery")!, statusCode: 200, httpVersion: nil, headerFields: nil)
             networkRequestExpectation.fulfill()
             return (data: responseString.data(using: .utf8), response: badResponse, error: nil)
         }
@@ -837,9 +837,9 @@ class TargetLoadRequestsFunctionalTests: TargetFunctionalTestsBase {
         XCTAssertEqual(1, mockRuntime.dispatchedEvents.count)
         mockRuntime.resetDispatchedEventAndCreatedSharedStates()
         let requestDataArray: [[String: Any]?] = [
-            TargetRequest(mboxName: "Drink_1", defaultContent: "default_content"),
-            TargetRequest(mboxName: "Drink_2", defaultContent: "default_content"),
-            TargetRequest(mboxName: "Drink_3", defaultContent: "default_content_123"),
+            TargetRequest(mboxName: "Drink_1", defaultContent: "default_content", contentCallback: nil),
+            TargetRequest(mboxName: "Drink_2", defaultContent: "default_content", contentCallback: nil),
+            TargetRequest(mboxName: "Drink_3", defaultContent: "default_content_123", contentCallback: nil),
         ].map {
             $0.asDictionary()
         }
@@ -933,7 +933,7 @@ class TargetLoadRequestsFunctionalTests: TargetFunctionalTestsBase {
 
         // creates a configuration's shared state
         let configuration = [
-            "target.clientCode": "code_123",
+            "target.clientCode": "acopprod3",
             "global.privacy": "optedin",
         ]
         mockRuntime.simulateSharedState(extensionName: "com.adobe.module.configuration", event: prefetchEvent, data: (value: configuration, status: .set))
@@ -946,7 +946,7 @@ class TargetLoadRequestsFunctionalTests: TargetFunctionalTestsBase {
         let mockNetworkService = TestableNetworkService()
         ServiceProvider.shared.networkService = mockNetworkService
         mockNetworkService.mock { _ in
-            let badResponse = HTTPURLResponse(url: URL(string: "https://amsdk.tt.omtrdc.net/rest/v1/delivery")!, statusCode: 200, httpVersion: nil, headerFields: nil)
+            let badResponse = HTTPURLResponse(url: URL(string: "https://acopprod3.tt.omtrdc.net/rest/v1/delivery")!, statusCode: 200, httpVersion: nil, headerFields: nil)
             networkRequestExpectation.fulfill()
             return (data: responseString.data(using: .utf8), response: badResponse, error: nil)
         }
@@ -963,8 +963,8 @@ class TargetLoadRequestsFunctionalTests: TargetFunctionalTestsBase {
 
         mockRuntime.resetDispatchedEventAndCreatedSharedStates()
         let requestDataArray: [[String: Any]?] = [
-            TargetRequest(mboxName: "Drink_1", defaultContent: "default_content"),
-            TargetRequest(mboxName: "Drink_2", defaultContent: "default_content"),
+            TargetRequest(mboxName: "Drink_1", defaultContent: "default_content", contentCallback: nil),
+            TargetRequest(mboxName: "Drink_2", defaultContent: "default_content", contentCallback: nil),
         ].map {
             $0.asDictionary()
         }

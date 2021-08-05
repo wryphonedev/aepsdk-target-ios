@@ -45,8 +45,8 @@ class TargetEventTests: XCTestCase {
     }
 
     func testBatchRequestObjectArray() throws {
-        let requestDict_1 = TargetRequest(mboxName: "request_1", defaultContent: mockDefaultContent_1, targetParameters: mockTargetParameter_1).asDictionary()
-        let requestDict_2 = TargetRequest(mboxName: "request_2", defaultContent: mockDefaultContent_2, targetParameters: mockTargetParameter_2).asDictionary()
+        let requestDict_1 = TargetRequest(mboxName: "request_1", defaultContent: mockDefaultContent_1, targetParameters: mockTargetParameter_1, contentCallback: nil).asDictionary()
+        let requestDict_2 = TargetRequest(mboxName: "request_2", defaultContent: mockDefaultContent_2, targetParameters: mockTargetParameter_2, contentCallback: nil).asDictionary()
         let eventData = [TargetConstants.EventDataKeys.LOAD_REQUESTS: [requestDict_1, requestDict_2]]
         let event = Event(name: TargetConstants.EventName.LOAD_REQUEST, type: EventType.target, source: EventSource.requestContent, data: eventData as [String: Any])
         guard let array: [TargetRequest] = event.targetRequests else {

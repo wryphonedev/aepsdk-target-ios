@@ -312,8 +312,8 @@ class DeliveryRequestBuilderTests: XCTestCase {
                 "a.DaysSinceLastUse": "0",
                 "a.locale": "en-US",
             ],
-            targetRequestArray: [TargetRequest(mboxName: "Drink_1", defaultContent: "default", targetParameters: TargetParameters(profileParameters: ["mbox-parameter-key1": "mbox-parameter-value1"])),
-                                 TargetRequest(mboxName: "Drink_2", defaultContent: "default2", targetParameters: TargetParameters(profileParameters: ["mbox-parameter-key1": "mbox-parameter-value1"]))],
+            targetRequestArray: [TargetRequest(mboxName: "Drink_1", defaultContent: "default", targetParameters: TargetParameters(profileParameters: ["mbox-parameter-key1": "mbox-parameter-value1"]), contentCallback: nil),
+                                 TargetRequest(mboxName: "Drink_2", defaultContent: "default2", targetParameters: TargetParameters(profileParameters: ["mbox-parameter-key1": "mbox-parameter-value1"]), contentCallback: nil)],
             targetParameters: TargetParameters(profileParameters: ["name": "Smith"])
         )
 
@@ -594,6 +594,10 @@ private class MockedSystemInfoService: SystemInfoService {
 
     func getDeviceName() -> String {
         "My iPhone"
+    }
+
+    func getDeviceModelNumber() -> String {
+        ""
     }
 
     func getMobileCarrierName() -> String? {
