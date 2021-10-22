@@ -96,7 +96,7 @@ class TargetState {
         thirdPartyId = dataStore.getString(key: TargetConstants.DataStoreKeys.THIRD_PARTY_ID)
         storedEdgeHost = dataStore.getString(key: TargetConstants.DataStoreKeys.EDGE_HOST)
         sessionTimestampInSeconds = dataStore.getLong(key: TargetConstants.DataStoreKeys.SESSION_TIMESTAMP)
-        storedSessionId = dataStore.getString(key: TargetConstants.DataStoreKeys.SESSION_ID) ?? UUID().uuidString
+        storedSessionId = dataStore.getString(key: TargetConstants.DataStoreKeys.SESSION_ID) ?? ""
     }
 
     ///  Updates the stored configuration shared state if the given on is not nil.

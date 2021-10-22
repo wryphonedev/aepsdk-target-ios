@@ -357,12 +357,14 @@ class TargetFunctionalTests: TargetFunctionalTestsBase {
     func testIfSessionTimeOut_useNewSessionIdAndDefaultEdgeHostInTargetReqeust() {
         cleanUserDefaults()
         getUserDefaults().setValue(1_617_825_969, forKey: "Adobe.com.adobe.module.target.session.timestamp")
+        getUserDefaults().setValue("935CDD24-8FD7-4B30-8508-4BE40C3FC263", forKey: "Adobe.com.adobe.module.target.session.id")
         getUserDefaults().setValue("mboxedge35.tt.omtrdc.net", forKey: "Adobe.com.adobe.module.target.edge.host")
         mockRuntime = TestableExtensionRuntime()
         target = Target(runtime: mockRuntime)
         target.onRegistered()
-        let storedSessionId = target.targetState.storedSessionId
-        XCTAssertFalse(storedSessionId.isEmpty)
+        XCTAssertEqual("935CDD24-8FD7-4B30-8508-4BE40C3FC263", target.targetState.storedSessionId)
+        let sessionId = target.targetState.sessionId
+        XCTAssertNotEqual("935CDD24-8FD7-4B30-8508-4BE40C3FC263", sessionId)
         XCTAssertEqual("mboxedge35.tt.omtrdc.net", target.targetState.storedEdgeHost)
         let prefetchDataArray: [[String: Any]?] = [
             TargetPrefetch(name: "Drink_1"),
@@ -380,7 +382,7 @@ class TargetFunctionalTests: TargetFunctionalTestsBase {
         mockNetworkService.mock { request in
             XCTAssertNotNil(request)
             let queryMap = self.getQueryMap(url: request.url.absoluteString)
-            XCTAssertNotEqual(queryMap["sessionId"] ?? "", storedSessionId)
+            XCTAssertEqual(queryMap["sessionId"] ?? "", sessionId)
             XCTAssertFalse(request.url.absoluteString.contains("mboxedge35.tt.omtrdc.net"))
             return nil
         }
@@ -403,8 +405,7 @@ class TargetFunctionalTests: TargetFunctionalTestsBase {
         mockRuntime = TestableExtensionRuntime()
         target = Target(runtime: mockRuntime)
         target.onRegistered()
-        let storedSessionId = target.targetState.storedSessionId
-        XCTAssertFalse(storedSessionId.isEmpty)
+        var sessionId = ""
 
         let responseString = """
             {
@@ -455,7 +456,7 @@ class TargetFunctionalTests: TargetFunctionalTestsBase {
             // verifies network request
             XCTAssertNotNil(request)
             let queryMap = self.getQueryMap(url: request.url.absoluteString)
-            XCTAssertEqual(queryMap["sessionId"] ?? "", storedSessionId)
+            XCTAssertEqual(queryMap["sessionId"] ?? "", sessionId)
             XCTAssertTrue(request.url.absoluteString.contains("https://acopprod3.tt.omtrdc.net/rest/v1/delivery/?client=acopprod3&sessionId="))
             let validResponse = HTTPURLResponse(url: URL(string: "https://amsdk.tt.omtrdc.net/rest/v1/delivery")!, statusCode: 200, httpVersion: nil, headerFields: nil)
             return (data: responseString.data(using: .utf8), response: validResponse, error: nil)
@@ -479,8 +480,11 @@ class TargetFunctionalTests: TargetFunctionalTestsBase {
         target.onRegistered()
 
         XCTAssertTrue(target.readyForEvent(prefetchEvent1))
+        XCTAssertEqual("", target.targetState.edgeHost)
+        XCTAssertTrue(target.targetState.storedSessionId.isEmpty)
+        sessionId = target.targetState.sessionId
+        XCTAssertFalse(sessionId.isEmpty)
 
-        XCTAssertEqual(target.targetState.edgeHost, "")
         // handles the prefetch event
         eventListener(prefetchEvent1)
         XCTAssertEqual(target.targetState.edgeHost, "mboxedge35.tt.omtrdc.net")
@@ -490,7 +494,7 @@ class TargetFunctionalTests: TargetFunctionalTestsBase {
             // verifies network request
             XCTAssertNotNil(request)
             let queryMap = self.getQueryMap(url: request.url.absoluteString)
-            XCTAssertEqual(queryMap["sessionId"] ?? "", storedSessionId)
+            XCTAssertEqual(queryMap["sessionId"] ?? "", sessionId)
             XCTAssertTrue(request.url.absoluteString.contains("https://mboxedge35.tt.omtrdc.net/rest/v1/delivery/?client=acopprod3&sessionId="))
             return nil
         }
