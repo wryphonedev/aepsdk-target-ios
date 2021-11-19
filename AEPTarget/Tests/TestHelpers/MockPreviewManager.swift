@@ -16,14 +16,18 @@ import AEPServices
 import Foundation
 
 class MockTargetPreviewManager: PreviewManager {
+    var setRestartDeepLinkCalled = false
+    var restartDeepLink = ""
     func setRestartDeepLink(_ restartDeepLink: String) {
         self.restartDeepLink = restartDeepLink
         setRestartDeepLinkCalled = true
     }
 
     var enterPreviewModeWithDeepLinkCalled = false
-    func enterPreviewModeWithDeepLink(clientCode _: String, deepLink _: URL) {
+    var deepLink = URL(string: "")
+    func enterPreviewModeWithDeepLink(clientCode _: String, deepLink: URL) {
         enterPreviewModeWithDeepLinkCalled = true
+        self.deepLink = deepLink
     }
 
     static var previewConfirmedWithUrlCalled = false
@@ -36,9 +40,6 @@ class MockTargetPreviewManager: PreviewManager {
     func fetchWebView() {
         fetchWebViewCalled = true
     }
-
-    var setRestartDeepLinkCalled = false
-    var restartDeepLink = ""
 
     var previewParameters: String?
 

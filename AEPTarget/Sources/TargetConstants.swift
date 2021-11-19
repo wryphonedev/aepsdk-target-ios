@@ -15,7 +15,7 @@ import Foundation
 enum TargetConstants {
     static let EXTENSION_NAME = "com.adobe.module.target"
     static let FRIENDLY_NAME = "Target"
-    static let EXTENSION_VERSION = "3.1.1"
+    static let EXTENSION_VERSION = "3.1.2"
     static let DATASTORE_NAME = EXTENSION_NAME
     static let DEFAULT_SESSION_TIMEOUT: Int = 30 * 60 // 30 mins
     static let DELIVERY_API_URL_BASE = "https://%@/rest/v1/delivery/?client=%@&sessionId=%@"
@@ -90,6 +90,7 @@ enum TargetConstants {
         static let METRICS = "metrics"
         static let HTML = "html"
         static let JSON = "json"
+        static let QA_MODE = "qaMode"
         static let ANALYTICS = "analytics"
         static let ANALYTICS_PAYLOAD = "payload"
         /// For A4T requests event data.

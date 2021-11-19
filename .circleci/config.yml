@@ -51,10 +51,6 @@ jobs:
           paths:
             - ./Pods
             - ~/.cocoapods
-
-      - run:
-          name: Install SwiftLint
-          command: make install-swiftlint
       
       - run:
           name: Install SwiftFormat

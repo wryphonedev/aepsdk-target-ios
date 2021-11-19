@@ -29,8 +29,9 @@ enum TargetDeliveryRequestBuilder {
     ///   - notifications: viewed mboxes that we cached
     ///   - environmentId: target environmentId
     ///   - propertyToken: String to be passed for all requests
+    ///   - qaModeParameters: a string containing qaMode selection parameters
     /// - Returns: a `DeliveryRequest` object
-    static func build(tntId: String?, thirdPartyId: String?, identitySharedState: [String: Any]?, lifecycleSharedState: [String: Any]?, targetPrefetchArray: [TargetPrefetch]? = nil, targetRequestArray: [TargetRequest]? = nil, targetParameters: TargetParameters? = nil, notifications: [Notification]? = nil, environmentId: Int64 = 0, propertyToken: String? = nil) -> TargetDeliveryRequest? {
+    static func build(tntId: String?, thirdPartyId: String?, identitySharedState: [String: Any]?, lifecycleSharedState: [String: Any]?, targetPrefetchArray: [TargetPrefetch]? = nil, targetRequestArray: [TargetRequest]? = nil, targetParameters: TargetParameters? = nil, notifications: [Notification]? = nil, environmentId: Int64 = 0, propertyToken: String? = nil, qaModeParameters: String? = nil) -> TargetDeliveryRequest? {
         let targetIDs = getTargetIDs(tntid: tntId, thirdPartyId: thirdPartyId, identitySharedState: identitySharedState)
         let experienceCloud = getExperienceCloudInfo(identitySharedState: identitySharedState)
         guard let context = getTargetContext() else {
@@ -43,7 +44,7 @@ enum TargetDeliveryRequestBuilder {
             prefetch = getPrefetch(targetPrefetchArray: tpArray, lifecycleSharedState: lifecycleSharedState, globalParameters: targetParameters) ?? nil
         }
 
-        // prefetch
+        // execute
         var execute: Mboxes?
         if let trArray: [TargetRequest] = targetRequestArray {
             execute = getBatch(targetRequestArray: trArray, lifecycleSharedState: lifecycleSharedState, globalParameters: targetParameters) ?? nil
@@ -54,7 +55,17 @@ enum TargetDeliveryRequestBuilder {
             property = Property(token: propertyToken)
         }
 
-        return TargetDeliveryRequest(id: targetIDs, context: context, experienceCloud: experienceCloud, prefetch: prefetch, execute: execute, notifications: notifications, environmentId: environmentId, property: property)
+        var qaMode: [String: AnyCodable]?
+        if
+            let qaModeParameters = qaModeParameters,
+            !qaModeParameters.isEmpty,
+            let qaModeData = qaModeParameters.data(using: .utf8)
+        {
+            let qaModeDict = try? JSONSerialization.jsonObject(with: qaModeData, options: []) as? [String: Any]
+            qaMode = AnyCodable.from(dictionary: qaModeDict?[TargetConstants.TargetJson.QA_MODE] as? [String: Any])
+        }
+
+        return TargetDeliveryRequest(id: targetIDs, context: context, experienceCloud: experienceCloud, prefetch: prefetch, execute: execute, notifications: notifications, environmentId: environmentId, property: property, qaMode: qaMode)
     }
 
     /// Creates the display notification object

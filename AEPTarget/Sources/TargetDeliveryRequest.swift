@@ -27,8 +27,9 @@ struct TargetDeliveryRequest: Codable {
     var notifications: [Notification]?
     var environmentId: Int64
     var property: Property?
+    var qaMode: [String: AnyCodable]?
 
-    init(id: TargetIDs, context: TargetContext, experienceCloud: ExperienceCloudInfo, prefetch: Mboxes? = nil, execute: Mboxes? = nil, notifications: [Notification]? = nil, environmentId: Int64 = 0, property: Property? = nil) {
+    init(id: TargetIDs, context: TargetContext, experienceCloud: ExperienceCloudInfo, prefetch: Mboxes? = nil, execute: Mboxes? = nil, notifications: [Notification]? = nil, environmentId: Int64 = 0, property: Property? = nil, qaMode: [String: AnyCodable]? = nil) {
         self.id = id
         self.context = context
         self.experienceCloud = experienceCloud
@@ -37,6 +38,7 @@ struct TargetDeliveryRequest: Codable {
         self.notifications = notifications
         self.environmentId = environmentId
         self.property = property
+        self.qaMode = qaMode
     }
 
     func toJSON() -> String? {

@@ -30,7 +30,7 @@ class TargetFunctionalTestsBase: XCTestCase {
 
     override func setUp() {
         // Mock data
-        mockConfigSharedState = ["target.clientCode": "acopprod3", "global.privacy": "optedin"]
+        mockConfigSharedState = ["target.clientCode": "acopprod3", "global.privacy": "optedin", "target.previewEnabled": true]
         mockLifecycleData = [
             "lifecyclecontextdata":
                 [

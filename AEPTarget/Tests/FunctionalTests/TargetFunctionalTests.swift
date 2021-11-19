@@ -352,6 +352,24 @@ class TargetFunctionalTests: TargetFunctionalTestsBase {
         XCTAssertEqual(mockPreviewManager.restartDeepLink, testRestartDeeplink)
     }
 
+    func testPreviewDeeplink() {
+        let testDeeplink = "testUrl://?at_preview_token=test_token"
+        let eventData = ["deeplink": testDeeplink]
+        let event = Event(name: "testCollectLaunchInfo", type: EventType.genericData, source: EventSource.os, data: eventData)
+        mockRuntime.simulateSharedState(extensionName: "com.adobe.module.configuration", event: event, data: (value: mockConfigSharedState, status: .set))
+        target.onRegistered()
+
+        guard let eventListener: EventListener = mockRuntime.listeners["com.adobe.eventType.generic.data-com.adobe.eventSource.os"] else {
+            XCTFail()
+            return
+        }
+        
+        XCTAssertTrue(target.readyForEvent(event))
+        eventListener(event)
+        XCTAssertTrue(mockPreviewManager.enterPreviewModeWithDeepLinkCalled)
+        XCTAssertEqual(mockPreviewManager.deepLink?.absoluteString, testDeeplink)
+    }
+
     // MARK: - Session testing
 
     func testIfSessionTimeOut_useNewSessionIdAndDefaultEdgeHostInTargetReqeust() {

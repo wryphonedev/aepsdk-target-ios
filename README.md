@@ -44,7 +44,7 @@ Alternatively, if your project has a `Package.swift` file, you can add AEPTarget
 
 ```
 dependencies: [
-    .package(url: "https://github.com/adobe/aepsdk-target-ios.git", .upToNextMajor(from: "3.1.1")),
+    .package(url: "https://github.com/adobe/aepsdk-target-ios.git", .upToNextMajor(from: "3.1.2")),
 ],
 targets: [
     .target(name: "YourTarget",
@@ -55,11 +55,11 @@ targets: [
 
 ### Binaries
 
-To generate an `AEPTarget.xcframework`, run the following command:
+Run the following command, from the project root directory, to generate the `AEPTarget.xcframework` in the `build` directory. But, first run `make pod-install` command to ensure the dependencies are installed.
 
-```
+``` 
 make archive
-```
+``` 
 
 ## Development
 

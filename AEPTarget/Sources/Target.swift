@@ -643,7 +643,7 @@ public class Target: NSObject, Extension {
         let lifecycleContextData = getLifecycleDataForTarget(lifecycleData: lifecycleData)
         let propToken = targetState.propertyToken
 
-        guard let requestJson = TargetDeliveryRequestBuilder.build(tntId: tntId, thirdPartyId: thirdPartyId, identitySharedState: identityData, lifecycleSharedState: lifecycleContextData, targetPrefetchArray: prefetchRequests, targetRequestArray: batchRequests, targetParameters: targetParameters, notifications: targetState.notifications.isEmpty ? nil : targetState.notifications, environmentId: environmentId, propertyToken: propToken)?.toJSON() else {
+        guard let requestJson = TargetDeliveryRequestBuilder.build(tntId: tntId, thirdPartyId: thirdPartyId, identitySharedState: identityData, lifecycleSharedState: lifecycleContextData, targetPrefetchArray: prefetchRequests, targetRequestArray: batchRequests, targetParameters: targetParameters, notifications: targetState.notifications.isEmpty ? nil : targetState.notifications, environmentId: environmentId, propertyToken: propToken, qaModeParameters: previewManager.previewParameters)?.toJSON() else {
             return "Failed to generate request parameter(JSON) for target delivery API call"
         }
 
