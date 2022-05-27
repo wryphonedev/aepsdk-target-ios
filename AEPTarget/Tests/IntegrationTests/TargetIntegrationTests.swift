@@ -997,7 +997,6 @@ class TargetIntegrationTests: XCTestCase {
                         "eventToken": "uR0kIAPO+tZtIPW92S0NnWqipfsIHvVzTQxHolz2IpSCnQ9Y9OaLL2gsdrWQTvE54PwSz67rmXWmSnkXpSSS2Q=="
                       }
                     ],
-                    "state": "state2",
                     "analytics": {
                       "payload": {
                         "pe": "tnt",

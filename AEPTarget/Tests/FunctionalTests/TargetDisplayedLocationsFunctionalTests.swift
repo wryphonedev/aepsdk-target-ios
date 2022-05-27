@@ -149,6 +149,139 @@ class TargetDisplayedLocationsFunctionalTests: TargetFunctionalTestsBase {
         XCTAssertEqual(1, mockRuntime.createdSharedStates.count)
         XCTAssertEqual("DE03D4AD-1FFE-421F-B2F2-303BF26822C1.35_0", mockRuntime.createdSharedStates[0]?["tntid"] as? String)
     }
+    
+    func testLocationDisplayed_noProfileState() {
+        // mocked network response
+        let responseString = """
+            {
+              "status": 200,
+              "id": {
+                "tntId": "DE03D4AD-1FFE-421F-B2F2-303BF26822C1.35_0",
+                "marketingCloudVisitorId": "38209274908399841237725561727471528301"
+              },
+              "requestId": "01d4a408-6978-48f7-95c6-03f04160b257",
+              "client": "acopprod3",
+              "edgeHost": "mboxedge35.tt.omtrdc.net",
+              "notifications": {
+                    "id": "4BA0B2EF-9A20-4BDC-9F97-0B955BC5FF84",
+              }
+            }
+        """
+
+        // Build the event data for display notification
+        let data: [String: Any] = [
+            "names": ["mbox1"],
+            "targetparams": TargetParameters(profileParameters: mockProfileParam).asDictionary() as Any,
+            TargetConstants.EventDataKeys.IS_LOCATION_DISPLAYED: true,
+        ]
+        let locationDisplayedEvent = Event(name: "TargetLocationsDisplayed", type: "com.adobe.eventType.target", source: "com.adobe.eventSource.requestContent", data: data)
+
+        // creates a configuration shared state
+        mockRuntime.simulateSharedState(extensionName: "com.adobe.module.configuration", event: locationDisplayedEvent, data: (value: mockConfigSharedState, status: .set))
+
+        // creates a lifecycle shared state
+        mockRuntime.simulateSharedState(extensionName: "com.adobe.module.lifecycle", event: locationDisplayedEvent, data: (value: mockLifecycleData, status: .set))
+        
+        // creates an identity shared state
+        mockRuntime.simulateSharedState(extensionName: "com.adobe.module.identity", event: locationDisplayedEvent, data: (value: mockIdentityData, status: .set))
+
+        // target state has mock prefetch mboxes
+        target.targetState.mergePrefetchedMboxJson(mboxesDictionary: mockMBoxJsonNoProfileState)
+
+        // registers the event listeners for Target extension
+        target.onRegistered()
+
+        // override network service
+        let mockNetworkService = TestableNetworkService()
+        ServiceProvider.shared.networkService = mockNetworkService
+        mockNetworkService.mock { request in
+            // verifies network request
+            XCTAssertNotNil(request)
+            guard let payloadDictionary = self.payloadAsDictionary(request.connectPayload) else {
+                XCTFail()
+                return nil
+            }
+            XCTAssertTrue(request.url.absoluteString.contains("https://acopprod3.tt.omtrdc.net/rest/v1/delivery/?client=acopprod3&sessionId="))
+            XCTAssertTrue(Set(payloadDictionary.keys) == Set([
+                "id",
+                "experienceCloud",
+                "context",
+                "notifications",
+                "environmentId",
+            ]))
+
+            // verifies payloadDictionary["id"]
+            guard let idDictionary = payloadDictionary["id"] as? [String: Any] else {
+                XCTFail()
+                return nil
+            }
+            XCTAssertEqual("38209274908399841237725561727471528301", idDictionary["marketingCloudVisitorId"] as? String)
+            guard let vids = idDictionary["customerIds"] as? [[String: Any]] else {
+                XCTFail()
+                return nil
+            }
+            XCTAssertEqual(1, vids.count)
+            XCTAssertEqual("unknown", vids[0]["authenticatedState"] as? String)
+            XCTAssertEqual("vid_id_1", vids[0]["id"] as? String)
+            XCTAssertEqual("vid_type_1", vids[0]["integrationCode"] as? String)
+            
+            // verifies payloadDictionary["context"]
+            guard let context = payloadDictionary["context"] as? [String: Any] else {
+                XCTFail()
+                return nil
+            }
+            XCTAssertTrue(Set(context.keys) == Set([
+                "userAgent",
+                "mobilePlatform",
+                "screen",
+                "channel",
+                "application",
+                "timeOffsetInMinutes",
+            ]))
+
+            // verifies payloadDictionary["notifications"]
+            guard let notificationsArray = payloadDictionary["notifications"] as? [Any?] else {
+                XCTFail()
+                return nil
+            }
+
+            XCTAssertNotNil(notificationsArray)
+            XCTAssertEqual(1, notificationsArray.count)
+
+            let notificationsJson = self.prettify(notificationsArray)
+            XCTAssertTrue(notificationsJson.contains("\"sometoken\""))
+            XCTAssertTrue(notificationsJson.contains("\"type\" : \"display\""))
+            XCTAssertTrue(notificationsJson.contains("\"name\" : \"mbox1\""))
+            XCTAssertTrue(notificationsJson.contains("\"name\" : \"Smith\""))
+            XCTAssertTrue(notificationsJson.contains("\"a.OSVersion\" : \"iOS 14.4\""))
+            XCTAssertTrue(notificationsJson.contains("\"a.DeviceName\" : \"devicename_1\""))
+            XCTAssertTrue(notificationsJson.contains("\"a.AppID\" : \"appid_1\""))
+            XCTAssertTrue(notificationsJson.contains("\"a.locale\" : \"en-US\""))
+            XCTAssertTrue(notificationsJson.contains("\"a.RunMode\" : \"Application\""))
+            XCTAssertTrue(notificationsJson.contains("\"a.Resolution\" : \"1125x2436\""))
+
+            let validResponse = HTTPURLResponse(url: URL(string: "https://acopprod3.tt.omtrdc.net/rest/v1/delivery")!, statusCode: 200, httpVersion: nil, headerFields: nil)
+            return (data: responseString.data(using: .utf8), response: validResponse, error: nil)
+        }
+        guard let eventListener: EventListener = mockRuntime.listeners["com.adobe.eventType.target-com.adobe.eventSource.requestContent"] else {
+            XCTFail()
+            return
+        }
+        XCTAssertTrue(target.readyForEvent(locationDisplayedEvent))
+        // handles the locations displayed event
+        eventListener(locationDisplayedEvent)
+
+        // Check the notifications are cleared
+        XCTAssertTrue(target.targetState.notifications.isEmpty)
+
+        // verifies the content of network response was stored correctly
+        XCTAssertEqual("DE03D4AD-1FFE-421F-B2F2-303BF26822C1.35_0", target.targetState.tntId)
+        XCTAssertEqual("mboxedge35.tt.omtrdc.net", target.targetState.edgeHost)
+
+        // verifies the Target shared state
+        XCTAssertEqual(1, mockRuntime.createdSharedStates.count)
+        XCTAssertEqual("DE03D4AD-1FFE-421F-B2F2-303BF26822C1.35_0", mockRuntime.createdSharedStates[0]?["tntid"] as? String)
+    }
 
     func testLocationDisplayed_errorResponse() {
         // mocked network response

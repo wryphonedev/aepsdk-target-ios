@@ -244,10 +244,25 @@ class DeliveryRequestBuilderTests: XCTestCase {
         XCTFail()
     }
 
-    func testGetDisplayNotification_withNoState() {
-        let notification = TargetDeliveryRequestBuilder.getDisplayNotification(mboxName: "Drink_1", cachedMboxJson: ["mboxes": "mboxes1"], targetParameters: TargetParameters(parameters: ["p": "v"], profileParameters: ["name": "myname"], order: TargetOrder(id: "oid1"), product: TargetProduct(productId: "pid1")), timestamp: 12345, lifecycleContextData: ["a.OSVersion": "iOS 14.2"])
+    func testGetDisplayNotification_withNoProfileState() {
+        let notification = TargetDeliveryRequestBuilder.getDisplayNotification(mboxName: "Drink_1", cachedMboxJson: ["name":"Drink_1", "options": [["eventToken": "sometoken"]]], targetParameters: TargetParameters(parameters: ["param1": "val1"], profileParameters: ["profileParam1": "pval1"], order: TargetOrder(id: "oid1", total: 100.2, purchasedProductIds: ["pid1"]), product: TargetProduct(productId: "pid1", categoryId: "category1")), timestamp: 12345, lifecycleContextData: ["a.OSVersion": "iOS 15.4"])
 
-        XCTAssertNil(notification)
+        XCTAssertNotNil(notification)
+        XCTAssertNotNil(notification?.id)
+        XCTAssertEqual(TargetConstants.TargetJson.MetricType.DISPLAY, notification?.type)
+        XCTAssertEqual("Drink_1", notification?.mbox.name)
+        XCTAssertEqual(2, notification?.parameters?.count)
+        XCTAssertEqual("val1", notification?.parameters?["param1"])
+        XCTAssertEqual("iOS 15.4", notification?.parameters?["a.OSVersion"])
+        XCTAssertEqual(1, notification?.profileParameters?.count)
+        XCTAssertEqual("pval1", notification?.profileParameters?["profileParam1"])
+        XCTAssertNotNil(notification?.order)
+        XCTAssertEqual("oid1", notification?.order?.id)
+        XCTAssertEqual(100.2, notification?.order?.total)
+        XCTAssertEqual(["pid1"], notification?.order?.purchasedProductIds)
+        XCTAssertNotNil(notification?.product)
+        XCTAssertEqual("pid1", notification?.product?.id)
+        XCTAssertEqual("category1", notification?.product?.categoryId)
     }
 
     func testGetDisplayNotification_withNoTokense() {

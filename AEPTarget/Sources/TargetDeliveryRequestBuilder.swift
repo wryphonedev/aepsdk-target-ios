@@ -83,11 +83,12 @@ enum TargetDeliveryRequestBuilder {
         let mboxParameters = getMboxParameters(mboxParameters: targetParameters?.parameters, lifecycleContextData: lifecycleContextData)
 
         // Set mbox
-        guard let mboxState = cachedMboxJson?[TargetConstants.TargetJson.Mbox.STATE] as? String, !mboxState.isEmpty else {
-            Log.debug(label: TargetDeliveryRequest.LOG_TAG, "Unable to get display notification, mbox state is invalid")
-            return nil
+        let mbox: Mbox
+        if let mboxState = cachedMboxJson?[TargetConstants.TargetJson.Mbox.STATE] as? String, !mboxState.isEmpty {
+            mbox = Mbox(name: mboxName, state: mboxState)
+        } else {
+            mbox = Mbox(name: mboxName)
         }
-        let mbox = Mbox(name: mboxName, state: mboxState)
 
         // set token
         var tokens: [String] = []

@@ -23,6 +23,7 @@ class TargetFunctionalTestsBase: XCTestCase {
     var mockMBox = ["mbox1", "mbox2"]
     var mockMBoxJson = ["mbox1": ["name": "mbox1", "state": "state1", "options": [["eventToken": "sometoken"]], "metrics": [["type": "click", "eventToken": "eventToken"]]],
                         "mbox2": ["name": "mbox2", "state": "state2", "options": [["eventToken": "sometoken2"]]]]
+    var mockMBoxJsonNoProfileState = ["mbox1": ["name": "mbox1", "options": [["eventToken": "sometoken"]], "metrics": [["type": "click", "eventToken": "eventToken"]]]]
     var mockProfileParam = ["name": "Smith"]
     var mockConfigSharedState: [String: Any] = [:]
     var mockLifecycleData: [String: Any] = [:]
