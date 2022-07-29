@@ -269,7 +269,114 @@ class TargetPublicAPITests: XCTestCase {
         }
         wait(for: [expectation], timeout: 1)
     }
+    
+    func testSetSessionId() throws {
+        let expectation = XCTestExpectation(description: "Should dispatch a Target request identity event for setting the session Id.")
+        expectation.assertForOverFulfill = true
+        EventHub.shared.getExtensionContainer(MockExtension.self)?.eventListeners.clear()
+        EventHub.shared.getExtensionContainer(MockExtension.self)?.registerListener(type: "com.adobe.eventType.target", source: "com.adobe.eventSource.requestIdentity") { event in
+            guard let eventData = event.data else {
+                XCTFail("Event data is nil.")
+                expectation.fulfill()
+                return
+            }
+            let id = eventData["sessionid"] as? String
+            XCTAssertEqual(id, "mockSessionId")
+            expectation.fulfill()
+        }
 
+        Target.setSessionId("mockSessionId")
+        wait(for: [expectation], timeout: 1)
+    }
+
+    func testSetSessionId_withNil() throws {
+        let expectation = XCTestExpectation(description: "Should dispatch a Target request identity event for setting session Id.")
+        expectation.assertForOverFulfill = true
+        EventHub.shared.getExtensionContainer(MockExtension.self)?.eventListeners.clear()
+        EventHub.shared.getExtensionContainer(MockExtension.self)?.registerListener(type: "com.adobe.eventType.target", source: "com.adobe.eventSource.requestIdentity") { event in
+            guard let eventData = event.data else {
+                XCTFail("Event data is nil.")
+                expectation.fulfill()
+                return
+            }
+            let id = eventData["sessionid"] as? String
+            XCTAssertEqual(id, "")
+            expectation.fulfill()
+        }
+
+        Target.setSessionId(nil)
+        wait(for: [expectation], timeout: 1)
+    }
+
+    func testGetSessionId() throws {
+        let expectation = XCTestExpectation(description: "Should dispatch a Target response identity event with a valid session Id in event data.")
+        expectation.assertForOverFulfill = true
+        EventHub.shared.getExtensionContainer(MockExtension.self)?.eventListeners.clear()
+        EventHub.shared.getExtensionContainer(MockExtension.self)?.registerListener(type: "com.adobe.eventType.target", source: "com.adobe.eventSource.requestIdentity") {
+            event in
+            MobileCore.dispatch(event: event.createResponseEvent(name: "TargetResponseIdentity", type: "com.adobe.eventType.target", source: "com.adobe.eventSource.responseIdentity", data: ["sessionid": "mockSessionId"]))
+        }
+        Target.getSessionId { id, _ in
+            XCTAssertEqual(id, "mockSessionId")
+            expectation.fulfill()
+        }
+        wait(for: [expectation], timeout: 1)
+    }
+
+    func testGetSessionId_withNilResponseEventData() throws {
+        let expectation = XCTestExpectation(description: "Should dispatch a Target response identity event with nil event data.")
+        expectation.assertForOverFulfill = true
+        EventHub.shared.getExtensionContainer(MockExtension.self)?.eventListeners.clear()
+        EventHub.shared.getExtensionContainer(MockExtension.self)?.registerListener(type: "com.adobe.eventType.target", source: "com.adobe.eventSource.requestIdentity") {
+            event in
+            MobileCore.dispatch(event: event.createResponseEvent(name: TargetConstants.EventName.IDENTITY_RESPONSE, type: "com.adobe.eventType.target", source: "com.adobe.eventSource.responseIdentity", data: nil))
+        }
+        Target.getSessionId { id, error in
+            XCTAssertNil(id)
+            XCTAssertNotNil(error)
+            expectation.fulfill()
+        }
+        wait(for: [expectation], timeout: 1)
+    }
+    
+    func testSetTntId() throws {
+        let expectation = XCTestExpectation(description: "Should dispatch a Target request identity event for setting the tnt Id.")
+        expectation.assertForOverFulfill = true
+        EventHub.shared.getExtensionContainer(MockExtension.self)?.eventListeners.clear()
+        EventHub.shared.getExtensionContainer(MockExtension.self)?.registerListener(type: "com.adobe.eventType.target", source: "com.adobe.eventSource.requestIdentity") { event in
+            guard let eventData = event.data else {
+                XCTFail("Event data is nil.")
+                expectation.fulfill()
+                return
+            }
+            let id = eventData["tntid"] as? String
+            XCTAssertEqual(id, "mockTntId")
+            expectation.fulfill()
+        }
+
+        Target.setTntId("mockTntId")
+        wait(for: [expectation], timeout: 1)
+    }
+
+    func testSetTntId_withNil() throws {
+        let expectation = XCTestExpectation(description: "Should dispatch a Target request identity event for setting the tnt Id.")
+        expectation.assertForOverFulfill = true
+        EventHub.shared.getExtensionContainer(MockExtension.self)?.eventListeners.clear()
+        EventHub.shared.getExtensionContainer(MockExtension.self)?.registerListener(type: "com.adobe.eventType.target", source: "com.adobe.eventSource.requestIdentity") { event in
+            guard let eventData = event.data else {
+                XCTFail("Event data is nil.")
+                expectation.fulfill()
+                return
+            }
+            let id = eventData["tntid"] as? String
+            XCTAssertEqual(id, "")
+            expectation.fulfill()
+        }
+
+        Target.setTntId(nil)
+        wait(for: [expectation], timeout: 1)
+    }
+    
     func testGetTntId() throws {
         let expectation = XCTestExpectation(description: "Should dispatch a GetTntId event")
         expectation.assertForOverFulfill = true

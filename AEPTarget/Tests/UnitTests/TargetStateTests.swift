@@ -48,7 +48,7 @@ class TargetStateTests: XCTestCase {
             "global.privacy": "optedin",
         ])
         XCTAssertEqual(NSDictionary(dictionary: ["target.clientCode": "code_456", "global.privacy": "optedin"]), targetState.storedConfigurationSharedState as NSDictionary?)
-        XCTAssertEqual(targetState.edgeHost, "")
+        XCTAssertNil(targetState.edgeHost)
     }
 
     func testPrivacyStatus() {
@@ -137,11 +137,13 @@ class TargetStateTests: XCTestCase {
             "target.sessionTimeout": 1800,
         ])
 
-        let sessionId = targetState.sessionId
-        XCTAssertFalse(sessionId.isEmpty)
+        let sessionId = "mockSessionId"
+        targetState.updateSessionId(sessionId)
+        XCTAssertEqual(sessionId, targetState.sessionId)
         XCTAssertEqual(sessionId, targetDataStore.getString(key: "session.id"))
 
-        targetState.resetSessionId()
+        targetState.updateSessionId("")
+
         let newSessionId = targetState.sessionId
         XCTAssertFalse(newSessionId.isEmpty)
         XCTAssertEqual(newSessionId, targetDataStore.getString(key: "session.id"))

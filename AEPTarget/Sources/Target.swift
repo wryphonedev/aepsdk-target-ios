@@ -79,11 +79,24 @@ public class Target: NSObject, Extension {
     }
 
     private func handleRequestIdentity(_ event: Event) {
-        if let eventData = event.data, let thirdPartyId = eventData[TargetConstants.EventDataKeys.THIRD_PARTY_ID] as? String {
-            setThirdPartyId(thirdPartyId: thirdPartyId, event: event)
-        } else {
-            dispatchRequestIdentityResponse(triggerEvent: event)
+        if let eventData = event.data {
+            if let thirdPartyId = eventData[TargetConstants.EventDataKeys.THIRD_PARTY_ID] as? String {
+                setThirdPartyId(thirdPartyId: thirdPartyId, event: event)
+                return
+            }
+
+            if let tntId = eventData[TargetConstants.EventDataKeys.TNT_ID] as? String {
+                setTntId(tntId: tntId, event: event)
+                return
+            }
+
+            if let sessionId = eventData[TargetConstants.EventDataKeys.TARGET_SESSION_ID] as? String {
+                setSessionId(sessionId: sessionId)
+                return
+            }
         }
+
+        dispatchRequestIdentityResponse(triggerEvent: event)
     }
 
     private func handleConfigurationResponseContent(_ event: Event) {
@@ -207,7 +220,7 @@ public class Target: NSObject, Extension {
                 self.dispatchPrefetchErrorEvent(triggerEvent: event, errorMessage: "Target response parser initialization failed")
                 return
             }
-            if let tntId = deliveryResponse.tntId { self.setTntId(tntId: tntId) }
+            if let tntId = deliveryResponse.tntId { self.setTntIdInternal(tntId: tntId) }
             if let edgeHost = deliveryResponse.edgeHost { self.targetState.updateEdgeHost(edgeHost) }
             self.createSharedState(data: self.targetState.generateSharedState(), event: event)
 
@@ -445,7 +458,7 @@ public class Target: NSObject, Extension {
             return
         }
 
-        if let tntId = response.tntId { setTntId(tntId: tntId) }
+        if let tntId = response.tntId { setTntIdInternal(tntId: tntId) }
         if let edgeHost = response.edgeHost { targetState.updateEdgeHost(edgeHost) }
         createSharedState(data: targetState.generateSharedState(), event: event)
     }
@@ -536,6 +549,7 @@ public class Target: NSObject, Extension {
         if let tntId = targetState.tntId {
             eventData[TargetConstants.EventDataKeys.TNT_ID] = tntId
         }
+        eventData[TargetConstants.EventDataKeys.TARGET_SESSION_ID] = targetState.sessionId
         dispatch(event: triggerEvent.createResponseEvent(name: TargetConstants.EventName.IDENTITY_RESPONSE, type: EventType.target, source: EventSource.responseIdentity, data: eventData))
     }
 
@@ -679,7 +693,7 @@ public class Target: NSObject, Extension {
     /// - Parameters:
     ///     - configurationSharedState: `Dictionary` Configuration shared state
     private func resetIdentity() {
-        setTntId(tntId: nil)
+        setTntIdInternal(tntId: nil)
         setThirdPartyIdInternal(thirdPartyId: nil)
         targetState.updateEdgeHost(nil)
         resetSession()
@@ -698,22 +712,80 @@ public class Target: NSObject, Extension {
         createSharedState(data: eventData, event: event)
     }
 
-    /// Saves the tntId to the Target DataStore or remove its key in the dataStore if the tntId is nil.
-    /// If the tntId ID is changed.
+    /// Saves the provided Target session Id in the data store.
+    /// If the privacy status is opt out or the provided session Id is empty,  the corresponding key is removed from the data store.
     /// - Parameters:
-    ///     - tntId: new tntId that needs to be set
-    private func setTntId(tntId: String?) {
+    ///     - sessionId: new session Id that needs to be set in the SDK
+    private func setSessionId(sessionId: String) {
+        guard !targetState.privacyStatusIsOptOut else {
+            Log.debug(label: Target.LOG_TAG, "setSessionId - Cannot update Target sessionId due to opt out privacy status.")
+            return
+        }
+
+        guard !sessionId.isEmpty else {
+            Log.debug(label: Target.LOG_TAG, "setSessionId - Provided sessionId is empty, resetting the Target session.")
+            resetSession()
+            return
+        }
+
+        if sessionId != targetState.storedSessionId {
+            Log.debug(label: Target.LOG_TAG, "setSessionId - Updated Target session Id with the provided value \(sessionId).")
+            targetState.updateSessionId(sessionId)
+        }
+        targetState.updateSessionTimestamp()
+    }
+
+    /// Saves the tntId in the SDK and creates a shared state to share the persisted identifier.
+    ///
+    /// - Parameters:
+    ///     - tntId: string containing the new tntId to be set in the SDK.
+    ///     - event: incoming event containing the new tntId.
+    private func setTntId(tntId: String, event: Event) {
+        guard let eventData = event.data as [String: Any]? else {
+            Log.error(label: Target.LOG_TAG, "Unable to set tnt Id, event data is nil.")
+            return
+        }
+
+        setTntIdInternal(tntId: tntId)
+        createSharedState(data: eventData, event: event)
+    }
+
+    /// Saves the tntId and the edge host value derived from it to the Target data store.
+    ///
+    /// The tntId has the format UUID.\<profile location hint\>. The edge host value can be derived from the profile location hint.
+    /// For example, if the tntId is 10abf6304b2714215b1fd39a870f01afc.28_20, then the edgeHost will be mboxedge28.tt.omtrdc.net.
+    ///
+    /// If a valid tntId is provided and the privacy status is opted out or the provided tntId is same as the existing value, then the method returns with no further action.
+    /// If nil value is provided for the tntId, then both tntId and edge host values are removed from the Target data store.
+    ///
+    /// - Parameters:
+    ///     - tntId: string containing tntId to be set in the SDK.
+    private func setTntIdInternal(tntId: String?) {
         // do not set identifier if privacy is opt-out and the id is not being cleared
         if targetState.privacyStatusIsOptOut, let tntId = tntId, !tntId.isEmpty {
-            Log.debug(label: Target.LOG_TAG, "setTntId - Cannot update Target tntId due to opt out privacy status.")
+            Log.debug(label: Target.LOG_TAG, "setTntIdInternal - Cannot update Target tntId due to opt out privacy status.")
             return
         }
 
-        if tntIdValuesAreEqual(newTntId: tntId, oldTntId: targetState.tntId) {
-            Log.debug(label: Target.LOG_TAG, "setTntId - New tntId value is same as the existing tntId \(String(describing: targetState.tntId)).")
+        if tntId == targetState.tntId {
+            Log.debug(label: Target.LOG_TAG, "setTntIdInternal - Won't update Target tntId as provided value is same as the existing tntId value \(String(describing: tntId)).")
             return
         }
 
+        if
+            let locationHintRange = tntId?.range(of: "(?<=[0-9A-Fa-f-]\\.)([\\d][^\\D]*)(?=_)", options: .regularExpression),
+            let locationHint = tntId?[locationHintRange],
+            !locationHint.isEmpty
+        {
+            let edgeHost = String(format: TargetConstants.API_URL_HOST_BASE, String(format: TargetConstants.EDGE_HOST_BASE, String(locationHint)))
+            Log.debug(label: Target.LOG_TAG, "setTntIdInternal - The edge host value derived from the given tntId \(String(describing: tntId)) is \(edgeHost).")
+            targetState.updateEdgeHost(edgeHost)
+        } else {
+            Log.debug(label: Target.LOG_TAG, "setTntIdInternal - The edge host value cannot be derived from the given tntId \(String(describing: tntId)) and it is removed from the data store.")
+            targetState.updateEdgeHost(nil)
+        }
+
+        Log.trace(label: Target.LOG_TAG, "setTntIdInternal - Updating tntId with value \(String(describing: tntId)).")
         targetState.updateTntId(tntId)
     }
 
@@ -736,28 +808,8 @@ public class Target: NSObject, Extension {
 
     /// Resets current  sessionId and the sessionTimestampInSeconds
     private func resetSession() {
-        targetState.resetSessionId()
+        targetState.updateSessionId("")
         targetState.updateSessionTimestamp(reset: true)
-    }
-
-    /// Compares if the given two tntID's are equal. tntId is a concatenation of {tntId}.{tnt_sessionId}
-    /// false is returned when tntID's are different.
-    /// true is returned when tntID's are same.
-    /// - Parameters:
-    ///     - newTntId: new tntId
-    ///     - oldTntId: old tntId
-    private func tntIdValuesAreEqual(newTntId: String?, oldTntId: String?) -> Bool {
-        if newTntId == oldTntId {
-            return true
-        }
-
-        if let oldTntId = oldTntId, let newTntId = newTntId {
-            let oldId = String(oldTntId.split(separator: ".").first ?? Substring(oldTntId))
-            let newId = String(newTntId.split(separator: ".").first ?? Substring(newTntId))
-            return oldId == newId
-        }
-
-        return false
     }
 
     /// Runs the default callback for each of the request in the list.
@@ -825,7 +877,7 @@ public class Target: NSObject, Extension {
             return (nil, nil)
         }
 
-        var contentBuilder: String = ""
+        var contentBuilder = ""
         var responseTokens: [String: String]?
 
         for option in optionsArray {

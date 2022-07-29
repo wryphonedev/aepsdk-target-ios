@@ -150,7 +150,7 @@ import Foundation
     /// - Parameter id: a string pointer containing the value of the third party id (custom visitor id)
     static func setThirdPartyId(_ id: String?) {
         let eventData = [TargetConstants.EventDataKeys.THIRD_PARTY_ID: id ?? ""]
-        let event = Event(name: TargetConstants.EventName.REQUEST_IDENTITY, type: EventType.target, source: EventSource.requestIdentity, data: eventData)
+        let event = Event(name: TargetConstants.EventName.SET_THIRD_PARTY_ID, type: EventType.target, source: EventSource.requestIdentity, data: eventData)
         MobileCore.dispatch(event: event)
     }
 
@@ -158,57 +158,118 @@ import Foundation
     /// This ID will be reset  when the `resetExperience()` API is called.
     /// - Parameter completion:  the callback `closure` will be invoked to return the thirdPartyId value or `nil` if no third-party ID is set
     static func getThirdPartyId(_ completion: @escaping (String?, Error?) -> Void) {
-        let event = Event(name: TargetConstants.EventName.REQUEST_IDENTITY, type: EventType.target, source: EventSource.requestIdentity, data: nil)
+        let event = Event(name: TargetConstants.EventName.GET_THIRD_PARTY_ID, type: EventType.target, source: EventSource.requestIdentity, data: nil)
         MobileCore.dispatch(event: event) { responseEvent in
             guard let responseEvent = responseEvent else {
                 let error = "Request to get third party id failed, \(TargetError.ERROR_TIMEOUT)"
                 completion(nil, TargetError(message: error))
-                Log.error(label: Target.LOG_TAG, error)
+                Log.warning(label: Target.LOG_TAG, error)
                 return
             }
             guard let eventData = responseEvent.data else {
                 let error = "Unable to handle response, event data is nil."
                 completion(nil, TargetError(message: error))
-                Log.error(label: Target.LOG_TAG, error)
+                Log.warning(label: Target.LOG_TAG, error)
                 return
             }
             guard let thirdPartyId = eventData[TargetConstants.EventDataKeys.THIRD_PARTY_ID] as? String else {
                 let error = "Unable to handle response, No third party id available."
                 completion(nil, TargetError(message: error))
-                Log.error(label: Target.LOG_TAG, error)
+                Log.warning(label: Target.LOG_TAG, error)
                 return
             }
             completion(thirdPartyId, nil)
         }
     }
 
-    /// Gets the Test and Target user identifier.
-    /// Retrieves the TnT ID returned by the Target server for this visitor. The TnT ID is set to the
-    /// Mobile SDK after a successful call to prefetch content or load requests.
+    /// Sets the Target session identifier.
     ///
-    /// This ID is preserved between app upgrades, is saved and restored during the standard application
-    /// backup process, and is removed at uninstall or when AEPTarget.resetExperience is called.
+    /// The provided session ID is persisted in the SDK for a period defined by `target.sessionTimeout` configuration setting.
+    /// If the provided session ID is nil or empty or if the privacy status is opted out, the SDK will remove the session ID value from the persistence.
     ///
-    /// - Parameter completion:  the callback `closure` invoked with the current tnt id or `nil` if no tnt id is set.
-    static func getTntId(_ completion: @escaping (String?, Error?) -> Void) {
-        let event = Event(name: TargetConstants.EventName.REQUEST_IDENTITY, type: EventType.target, source: EventSource.requestIdentity, data: nil)
+    /// This ID is preserved between app upgrades, is saved and restored during the standard application backup process,
+    /// and is removed at uninstall, upon privacy status update to opted out or when the AEPTarget.resetExperience API is called.
+    ///
+    /// - Parameter id: a string containing the value of the Target session ID to be set in the SDK.
+    static func setSessionId(_ id: String?) {
+        let eventData = [TargetConstants.EventDataKeys.TARGET_SESSION_ID: id ?? ""]
+        let event = Event(name: TargetConstants.EventName.SET_SESSION_ID, type: EventType.target, source: EventSource.requestIdentity, data: eventData)
+        MobileCore.dispatch(event: event)
+    }
+
+    /// Gets the Target session identifier.
+    ///
+    /// The session ID is generated locally in the SDK upon initial Target request and persisted for a period defined by `target.sessionTimeout` configuration setting.
+    /// If the session timeout happens upon a subsequent Target request, a new session ID will be generated for use in the request and persisted in the SDK.
+    ///
+    /// - Parameter completion: the callback `closure` invoked with the current session ID, or `nil` if there was an error retrieving it.
+    static func getSessionId(_ completion: @escaping (String?, Error?) -> Void) {
+        let event = Event(name: TargetConstants.EventName.GET_SESSION_ID, type: EventType.target, source: EventSource.requestIdentity, data: nil)
         MobileCore.dispatch(event: event) { responseEvent in
             guard let responseEvent = responseEvent else {
-                let error = "Request to get third party id failed, \(TargetError.ERROR_TIMEOUT)"
+                let error = "Request to get Target session ID failed with error, \(TargetError.ERROR_TIMEOUT)"
                 completion(nil, TargetError(message: error))
-                Log.error(label: Target.LOG_TAG, error)
+                Log.warning(label: Target.LOG_TAG, error)
                 return
             }
             guard let eventData = responseEvent.data else {
                 let error = "Unable to handle response, event data is nil."
                 completion(nil, TargetError(message: error))
-                Log.error(label: Target.LOG_TAG, error)
+                Log.warning(label: Target.LOG_TAG, error)
+                return
+            }
+            guard let sessionId = eventData[TargetConstants.EventDataKeys.TARGET_SESSION_ID] as? String else {
+                let error = "Unable to handle response, session ID is not available."
+                completion(nil, TargetError(message: error))
+                Log.warning(label: Target.LOG_TAG, error)
+                return
+            }
+            completion(sessionId, nil)
+        }
+    }
+
+    /// Sets the Target user identifier.
+    ///
+    /// The provided tnt ID is persisted in the SDK and attached to subsequent Target requests. It is used to
+    /// derive the edge host value in the SDK, which is also persisted and used in future Target requests.
+    ///
+    /// If the provided tnt ID is nil or empty or if the privacy status is opted out, the SDK will remove the tnt ID and edge host values from the persistence.
+    ///
+    /// This ID is preserved between app upgrades, is saved and restored during the standard application backup process,
+    /// and is removed at uninstall, upon privacy status update to opted out or when the AEPTarget.resetExperience API is called.
+    ///
+    /// - Parameter id: a string containing the value of the tnt ID to be set in the SDK.
+    static func setTntId(_ id: String?) {
+        let eventData = [TargetConstants.EventDataKeys.TNT_ID: id ?? ""]
+        let event = Event(name: TargetConstants.EventName.SET_TNT_ID, type: EventType.target, source: EventSource.requestIdentity, data: eventData)
+        MobileCore.dispatch(event: event)
+    }
+
+    /// Gets the Target user identifier.
+    ///
+    /// The tnt ID is returned in the network response from Target after a successful call to `prefetchContent` API or `retrieveLocationContent` API, which is then persisted in the SDK.
+    /// The persisted tnt ID is used in subsequent Target requests until a different tnt ID is returned from Target, or a new tnt ID is set using `setTntId` API.
+    ///
+    /// - Parameter completion:  the callback `closure` invoked with the current tnt ID, or `nil` if there was an error retrieving it.
+    static func getTntId(_ completion: @escaping (String?, Error?) -> Void) {
+        let event = Event(name: TargetConstants.EventName.GET_TNT_ID, type: EventType.target, source: EventSource.requestIdentity, data: nil)
+        MobileCore.dispatch(event: event) { responseEvent in
+            guard let responseEvent = responseEvent else {
+                let error = "Request to get tnt ID failed, \(TargetError.ERROR_TIMEOUT)"
+                completion(nil, TargetError(message: error))
+                Log.warning(label: Target.LOG_TAG, error)
+                return
+            }
+            guard let eventData = responseEvent.data else {
+                let error = "Unable to handle response, event data is nil."
+                completion(nil, TargetError(message: error))
+                Log.warning(label: Target.LOG_TAG, error)
                 return
             }
             guard let tntId = eventData[TargetConstants.EventDataKeys.TNT_ID] as? String else {
-                let error = "Unable to handle response, No tntid available."
+                let error = "Unable to handle response, tnt ID is not available."
                 completion(nil, TargetError(message: error))
-                Log.error(label: Target.LOG_TAG, error)
+                Log.warning(label: Target.LOG_TAG, error)
                 return
             }
             completion(tntId, nil)
@@ -267,7 +328,7 @@ import Foundation
     /// location before, indicating that the mbox was viewed. This request helps Target record the clicked event for the given location or mbox.
     ///
     /// - Parameters:
-    ///   - mboxName:  String value representing the name for location/mbox
+    ///   - name:  String value representing the name for location/mbox
     ///   - targetParameters:  a TargetParameters object containing parameters for the location clicked
     @objc(clickedLocation:withTargetParameters:)
     static func clickedLocation(_ name: String, targetParameters: TargetParameters? = nil) {

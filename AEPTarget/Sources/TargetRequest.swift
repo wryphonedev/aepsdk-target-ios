@@ -21,7 +21,7 @@ public class TargetRequest: NSObject, Codable {
 
     /// Instantiate a `TargetRequest` object
     /// - Parameters:
-    ///   - name: `String` mbox name for this request
+    ///   - mboxName: `String` mbox name for this request
     ///   - defaultContent: `String` default content for this request
     ///   - targetParameters: `TargetParameters` for this request
     ///   - contentCallback: which will get called with target mbox content
@@ -36,7 +36,7 @@ public class TargetRequest: NSObject, Codable {
 
     /// Instantiate a `TargetRequest` object
     /// - Parameters:
-    ///   - name: `String` mbox name for this request
+    ///   - mboxName: `String` mbox name for this request
     ///   - defaultContent: `String` default content for this request
     ///   - targetParameters: `TargetParameters` for this request
     ///   - contentWithDataCallback: which will get called with target mbox content, and an optional dictionary containing one or more of response tokens, analytics payload, and click metric analytics payload, if available.

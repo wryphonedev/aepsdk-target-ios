@@ -146,7 +146,7 @@ class TargetFunctionalTests: TargetFunctionalTestsBase {
 
         XCTAssertTrue(target.readyForEvent(prefetchEvent1))
 
-        XCTAssertEqual(target.targetState.edgeHost, "")
+        XCTAssertNil(target.targetState.edgeHost)
         // handles the prefetch event
         eventListener(prefetchEvent1)
         XCTAssertEqual(target.targetState.edgeHost, "mboxedge35.tt.omtrdc.net")
@@ -162,126 +162,6 @@ class TargetFunctionalTests: TargetFunctionalTestsBase {
             XCTAssertTrue(request.url.absoluteString.contains("https://mboxedge35.tt.omtrdc.net/rest/v1/delivery/?client=acopprod3&sessionId="))
             return nil
         }
-        eventListener(prefetchEvent2)
-    }
-
-    // MARK: - Set Tnt id
-
-    func testGetTntId() {
-        let event = Event(name: "", type: "", source: "", data: nil)
-        mockRuntime.simulateSharedState(extensionName: "com.adobe.module.configuration", event: event, data: (value: mockConfigSharedState, status: .set))
-        target.onRegistered()
-        target.targetState.updateTntId("mockId")
-        guard let eventListener: EventListener = mockRuntime.listeners["com.adobe.eventType.target-com.adobe.eventSource.requestIdentity"] else {
-            XCTFail()
-            return
-        }
-        eventListener(event)
-        if let data = mockRuntime.dispatchedEvents[0].data, let id = data[TargetConstants.EventDataKeys.TNT_ID] as? String {
-            XCTAssertEqual(mockRuntime.dispatchedEvents[0].type, EventType.target)
-            XCTAssertEqual(id, "mockId")
-            XCTAssertEqual(mockRuntime.dispatchedEvents[0].name, "TargetResponseIdentity")
-            XCTAssertEqual(event.id, mockRuntime.dispatchedEvents[0].responseID)
-            return
-        }
-        XCTFail()
-    }
-
-    func testGetTntId_withoutCachedTntId() {
-        let event = Event(name: "", type: "", source: "", data: nil)
-        mockRuntime.simulateSharedState(extensionName: "com.adobe.module.configuration", event: event, data: (value: mockConfigSharedState, status: .set))
-        target.onRegistered()
-        XCTAssertNil(target.targetState.tntId)
-        guard let eventListener: EventListener = mockRuntime.listeners["com.adobe.eventType.target-com.adobe.eventSource.requestIdentity"] else {
-            XCTFail()
-            return
-        }
-        eventListener(event)
-        if let data = mockRuntime.dispatchedEvents[0].data {
-            XCTAssertNil(data[TargetConstants.EventDataKeys.TNT_ID])
-            XCTAssertEqual(mockRuntime.dispatchedEvents[0].type, EventType.target)
-            XCTAssertEqual(mockRuntime.dispatchedEvents[0].name, "TargetResponseIdentity")
-            XCTAssertEqual(event.id, mockRuntime.dispatchedEvents[0].responseID)
-            return
-        }
-        XCTFail()
-    }
-
-    func testTntIdIsPresentInRequest_ifNoThirdPartyIds() {
-        let responseString = """
-            {
-              "status": 200,
-              "id": {
-                "tntId": "DE03D4AD-1FFE-421F-B2F2-303BF26822C1.35_0",
-                "marketingCloudVisitorId": "61055260263379929267175387965071996926"
-              },
-              "requestId": "01d4a408-6978-48f7-95c6-03f04160b257",
-              "client": "acopprod3",
-              "edgeHost": "mboxedge35.tt.omtrdc.net",
-              "prefetch": {
-                "mboxes": [
-                  {
-                    "index": 0,
-                    "name": "Drink_1",
-                    "options": [
-                      {
-                        "content": {
-                          "key1": "value1"
-                        },
-                        "type": "json",
-                        "eventToken": "uR0kIAPO+tZtIPW92S0NnWqipfsIHvVzTQxHolz2IpSCnQ9Y9OaLL2gsdrWQTvE54PwSz67rmXWmSnkXpSSS2Q=="
-                      }
-                    ]
-                  }
-                ]
-              }
-            }
-        """
-        let prefetchDataArray: [[String: Any]?] = [
-            TargetPrefetch(name: "Drink_1"),
-        ].map {
-            $0.asDictionary()
-        }
-
-        let data: [String: Any] = [
-            "prefetch": prefetchDataArray,
-        ]
-        let prefetchEvent = Event(name: "", type: "", source: "", data: data)
-        // override network service
-        let mockNetworkService = TestableNetworkService()
-        ServiceProvider.shared.networkService = mockNetworkService
-        mockNetworkService.mock { _ in
-            let validResponse = HTTPURLResponse(url: URL(string: "https://amsdk.tt.omtrdc.net/rest/v1/delivery")!, statusCode: 200, httpVersion: nil, headerFields: nil)
-            return (data: responseString.data(using: .utf8), response: validResponse, error: nil)
-        }
-        mockRuntime.simulateSharedState(extensionName: "com.adobe.module.configuration", event: prefetchEvent, data: (value: mockConfigSharedState, status: .set))
-        target.onRegistered()
-        XCTAssertNil(target.targetState.tntId)
-
-        guard let eventListener: EventListener = mockRuntime.listeners["com.adobe.eventType.target-com.adobe.eventSource.requestContent"] else {
-            XCTFail()
-            return
-        }
-        XCTAssertTrue(target.readyForEvent(prefetchEvent))
-        // handles the prefetch event
-        eventListener(prefetchEvent)
-
-        XCTAssertEqual("DE03D4AD-1FFE-421F-B2F2-303BF26822C1.35_0", target.targetState.tntId)
-        XCTAssertNil(target.targetState.thirdPartyId)
-        mockNetworkService.resolvers.removeAll()
-        mockNetworkService.mock { request in
-            XCTAssertNotNil(request)
-            guard let requestJson = try? JSON(data: request.connectPayload) else {
-                XCTFail("Target response should be valid for prefetch request.")
-                return nil
-            }
-            XCTAssertEqual("DE03D4AD-1FFE-421F-B2F2-303BF26822C1.35_0", requestJson["id"]["tntId"].stringValue)
-            XCTAssertFalse(requestJson["id"]["thirdPartyId"].exists())
-            XCTAssertFalse(requestJson["id"]["customerIds"].exists())
-            let validResponse = HTTPURLResponse(url: URL(string: "https://amsdk.tt.omtrdc.net/rest/v1/delivery")!, statusCode: 200, httpVersion: nil, headerFields: nil)
-            return (data: responseString.data(using: .utf8), response: validResponse, error: nil)
-        }
-        let prefetchEvent2 = Event(name: "", type: "", source: "", data: data)
         eventListener(prefetchEvent2)
     }
 
@@ -314,6 +194,7 @@ class TargetFunctionalTests: TargetFunctionalTestsBase {
         let event = Event(name: "", type: "", source: "", data: nil)
         mockConfigSharedState["global.privacy"] = "optedin"
         mockRuntime.simulateSharedState(extensionName: "com.adobe.module.configuration", event: event, data: (value: mockConfigSharedState, status: .set))
+        target.targetState.updateConfigurationSharedState(mockConfigSharedState)
         target.onRegistered()
         // Update state with mocks
         target.targetState.updateSessionTimestamp()
@@ -381,8 +262,6 @@ class TargetFunctionalTests: TargetFunctionalTestsBase {
         target = Target(runtime: mockRuntime)
         target.onRegistered()
         XCTAssertEqual("935CDD24-8FD7-4B30-8508-4BE40C3FC263", target.targetState.storedSessionId)
-        let sessionId = target.targetState.sessionId
-        XCTAssertNotEqual("935CDD24-8FD7-4B30-8508-4BE40C3FC263", sessionId)
         XCTAssertEqual("mboxedge35.tt.omtrdc.net", target.targetState.storedEdgeHost)
         let prefetchDataArray: [[String: Any]?] = [
             TargetPrefetch(name: "Drink_1"),
@@ -400,7 +279,7 @@ class TargetFunctionalTests: TargetFunctionalTestsBase {
         mockNetworkService.mock { request in
             XCTAssertNotNil(request)
             let queryMap = self.getQueryMap(url: request.url.absoluteString)
-            XCTAssertEqual(queryMap["sessionId"] ?? "", sessionId)
+            XCTAssertNotEqual(queryMap["sessionId"] ?? "", "935CDD24-8FD7-4B30-8508-4BE40C3FC263")
             XCTAssertFalse(request.url.absoluteString.contains("mboxedge35.tt.omtrdc.net"))
             return nil
         }
@@ -498,7 +377,7 @@ class TargetFunctionalTests: TargetFunctionalTestsBase {
         target.onRegistered()
 
         XCTAssertTrue(target.readyForEvent(prefetchEvent1))
-        XCTAssertEqual("", target.targetState.edgeHost)
+        XCTAssertNil(target.targetState.edgeHost)
         XCTAssertTrue(target.targetState.storedSessionId.isEmpty)
         sessionId = target.targetState.sessionId
         XCTAssertFalse(sessionId.isEmpty)

@@ -18,7 +18,10 @@ import SwiftUI
 struct ContentView: View {
     @State var thirdPartyId: String = ""
     @State var updatedThirdPartyId: String = ""
+    @State var sessionId: String = ""
+    @State var updatedSessionId: String = ""
     @State var tntId: String = ""
+    @State var updatedTntId: String = ""
     @State var griffonUrl: String = TestConstants.GRIFFON_URL
     @State var fullscreenMessage: FullscreenPresentable?
     var body: some View {
@@ -56,19 +59,35 @@ struct ContentView: View {
                 }
 
                 Group {
+                    Text("Session Id - \(sessionId)")
+                    Button("Get Session Id") {
+                        getSessionId()
+                    }.padding(10)
+
+                    TextField("Please enter Session Id", text: $updatedSessionId).multilineTextAlignment(.center)
+                    Button("Set Session Id") {
+                        setSessionId()
+                    }.padding(10)
+                    
                     Text("Third Party ID - \(thirdPartyId)")
                     Button("Get Third Party Id") {
                         getThirdPartyId()
                     }.padding(10)
-
+                    
+                    TextField("Please enter thirdPartyId", text: $updatedThirdPartyId).multilineTextAlignment(.center)
+                    Button("Set Third Party Id") {
+                        setThirdPartyId()
+                    }.padding(10)
+                }
+                Group {
                     Text("Tnt id - \(tntId)")
                     Button("Get Tnt Id") {
                         getTntId()
                     }.padding(10)
-                    TextField("Please enter thirdPartyId", text: $updatedThirdPartyId).multilineTextAlignment(.center)
-
-                    Button("Set Third Party Id") {
-                        setThirdPartyId()
+                    
+                    TextField("Please enter tntId", text: $updatedTntId).multilineTextAlignment(.center)
+                    Button("Set Tnt Id") {
+                        setTntId()
                     }.padding(10)
 
                     Button("Clear prefetch cache") {
@@ -163,6 +182,21 @@ struct ContentView: View {
         Target.clearPrefetchCache()
     }
 
+    func getSessionId() {
+        Target.getSessionId { id, err in
+            if let id = id {
+                self.sessionId = id
+            }
+            if let err = err {
+                Log.error(label: "AEPTargetDemoApp", "Error: \(err)")
+            }
+        }
+    }
+    
+    func setSessionId() {
+        Target.setSessionId(updatedSessionId)
+    }
+    
     func getThirdPartyId() {
         Target.getThirdPartyId { id, err in
             if let id = id {
@@ -174,6 +208,10 @@ struct ContentView: View {
         }
     }
 
+    func setThirdPartyId() {
+        Target.setThirdPartyId(updatedThirdPartyId)
+    }
+    
     func getTntId() {
         Target.getTntId { id, err in
             if let id = id {
@@ -185,10 +223,10 @@ struct ContentView: View {
         }
     }
 
-    func setThirdPartyId() {
-        Target.setThirdPartyId(updatedThirdPartyId)
+    func setTntId() {
+        Target.setTntId(updatedTntId)
     }
-
+    
     func enterPreview() {
         MobileCore.collectLaunchInfo(["adb_deeplink": TestConstants.DEEP_LINK])
     }

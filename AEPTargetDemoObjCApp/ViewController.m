@@ -12,9 +12,12 @@
 #import "ViewController.h"
 
 @interface ViewController ()
+@property (weak, nonatomic) IBOutlet UILabel *lblSessionId;
 @property (weak, nonatomic) IBOutlet UILabel *lblThirdParty;
 @property (weak, nonatomic) IBOutlet UILabel *lblTntId;
+@property (weak, nonatomic) IBOutlet UITextField *textSessionID;
 @property (weak, nonatomic) IBOutlet UITextField *textThirdPartyID;
+@property (weak, nonatomic) IBOutlet UITextField *textTntID;
 @property (weak, nonatomic) IBOutlet UITextField *griffonUrl;
 
 @end
@@ -103,6 +106,20 @@
     [AEPMobileTarget clearPrefetchCache];
 }
 
+- (IBAction)getSessionIdClicked:(id)sender {
+    [AEPMobileTarget getSessionId:^(NSString *sessionId, NSError *error){
+        dispatch_async(dispatch_get_main_queue(), ^{
+            [self.lblSessionId setText:sessionId];
+        });
+    }];
+}
+
+- (IBAction)setSessionIdClicked:(id)sender {
+    if(![_textSessionID.text isEqualToString:@""]) {
+        [AEPMobileTarget setSessionId:_textSessionID.text];
+    }
+}
+
 - (IBAction)getThirdPartyClicked:(id)sender {
     [AEPMobileTarget getThirdPartyId:^(NSString *thirdPartyID, NSError *error){
         dispatch_async(dispatch_get_main_queue(), ^{
@@ -111,7 +128,13 @@
     }];
 }
 
-- (IBAction)getTntIDClicked:(id)sender {
+- (IBAction)setThirdPartyClicked:(id)sender {
+    if(![_textThirdPartyID.text isEqualToString:@""]) {
+        [AEPMobileTarget setThirdPartyId:_textThirdPartyID.text];
+    }
+}
+
+- (IBAction)getTntIdClicked:(id)sender {
     [AEPMobileTarget getTntId:^(NSString *tntID, NSError *error){
         dispatch_async(dispatch_get_main_queue(), ^{
             [self.lblTntId setText:tntID];
@@ -119,9 +142,9 @@
     }];
 }
 
-- (IBAction)setThirdPartyClicked:(id)sender {
-    if(![_textThirdPartyID.text isEqualToString:@""]) {
-        [AEPMobileTarget setThirdPartyId:_textThirdPartyID.text];
+- (IBAction)setTntIdClicked:(id)sender {
+    if(![_textTntID.text isEqualToString:@""]) {
+        [AEPMobileTarget setTntId:_textTntID.text];
     }
 }
 

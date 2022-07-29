@@ -23,9 +23,25 @@ class TargetState {
 
     private(set) var thirdPartyId: String?
     private(set) var tntId: String?
-    private(set) var sessionTimestampInSeconds: Int64?
+    private(set) var sessionTimestampInSeconds: Int64? {
+        didSet {
+            if sessionTimestampInSeconds == 0 {
+                dataStore.remove(key: TargetConstants.DataStoreKeys.SESSION_TIMESTAMP)
+            } else {
+                dataStore.set(key: TargetConstants.DataStoreKeys.SESSION_TIMESTAMP, value: sessionTimestampInSeconds)
+            }
+        }
+    }
 
-    private(set) var storedSessionId: String
+    private(set) var storedSessionId: String {
+        didSet {
+            if storedSessionId.isEmpty {
+                dataStore.remove(key: TargetConstants.DataStoreKeys.SESSION_ID)
+            } else {
+                dataStore.set(key: TargetConstants.DataStoreKeys.SESSION_ID, value: storedSessionId)
+            }
+        }
+    }
 
     private let LOADED_MBOX_ACCEPTED_KEYS = [TargetConstants.TargetJson.Mbox.NAME, TargetConstants.TargetJson.METRICS]
 
@@ -73,7 +89,6 @@ class TargetState {
     var sessionId: String {
         if storedSessionId.isEmpty || isSessionExpired() {
             storedSessionId = UUID().uuidString
-            dataStore.set(key: TargetConstants.DataStoreKeys.SESSION_ID, value: storedSessionId)
             updateSessionTimestamp()
         }
         return storedSessionId
@@ -108,9 +123,9 @@ class TargetState {
         }
         if
             let newClientCode = configuration[TargetConstants.Configuration.SharedState.Keys.TARGET_CLIENT_CODE] as? String,
-            newClientCode != clientCode
+            storedConfigurationSharedState != nil, newClientCode != clientCode
         {
-            updateEdgeHost("")
+            updateEdgeHost(nil)
         }
 
         storedConfigurationSharedState = configuration
@@ -122,17 +137,16 @@ class TargetState {
     func updateSessionTimestamp(reset: Bool = false) {
         if reset {
             sessionTimestampInSeconds = 0
-            dataStore.remove(key: TargetConstants.DataStoreKeys.SESSION_TIMESTAMP)
             return
         }
         sessionTimestampInSeconds = Date().getUnixTimeInSeconds()
-        dataStore.set(key: TargetConstants.DataStoreKeys.SESSION_TIMESTAMP, value: sessionTimestampInSeconds)
     }
 
-    /// Remove storedSessionId and remove the key from datastore
-    func resetSessionId() {
-        dataStore.remove(key: TargetConstants.DataStoreKeys.SESSION_ID)
-        storedSessionId = ""
+    /// Updates stored sessionId with the provided value.
+    ///
+    /// - Parameter sessionId: string containing the new sessionId to be set
+    func updateSessionId(_ sessionId: String) {
+        storedSessionId = sessionId
     }
 
     /// Updates the TNT ID in memory and in the data store
