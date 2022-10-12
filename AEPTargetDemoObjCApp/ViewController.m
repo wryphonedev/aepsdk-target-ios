@@ -20,6 +20,8 @@
 @property (weak, nonatomic) IBOutlet UITextField *textTntID;
 @property (weak, nonatomic) IBOutlet UITextField *griffonUrl;
 
+@property NSMutableArray* notificationTokens;
+
 @end
 
 @implementation ViewController
@@ -27,6 +29,7 @@
 - (void)viewDidLoad {
     [super viewDidLoad];
     // Do any additional setup after loading the view.
+    self.notificationTokens = [[NSMutableArray alloc] init];
 }
 
 
@@ -162,4 +165,75 @@
     [AEPMobileTarget setPreviewRestartDeepLink:[NSURL URLWithString:(@"http://www.adobe.com")]];
 }
 
+- (IBAction)executeRawRequest: (id)sender {
+    NSDictionary *request = @{
+        @"property": @{
+            @"token": @"ccc7cdb3-c67a-6126-10b3-65d7f4d32b69"
+        },
+        @"execute": @{
+            @"mboxes": @[
+                @{
+                    @"index": @(0),
+                    @"name": @"aep-loc-1",
+                    @"parameters": @{
+                        @"mbox_parameter_key1": @"mbox_parameter_value1"
+                    }
+                },
+                @{
+                    @"index": @(1),
+                    @"name": @"aep-loc-2",
+                    @"parameters": @{
+                        @"mbox_parameter_key2": @"mbox_parameter_value2"
+                    }
+                }
+            ]
+        }
+    };
+
+    [AEPMobileTarget executeRawRequest:request completion:^(NSDictionary<NSString *,id> * _Nullable data, NSError * _Nullable err) {
+        if (err != nil) {
+            NSLog(@"Error: %@", err);
+            return;
+        }
+        NSLog(@"Execute raw response >> %@", data);
+        NSDictionary* execute = data[@"execute"];
+    
+        NSArray* executeMboxes = (execute != nil) ? execute[@"mboxes"] : @[];
+        for (int i = 0; i < [executeMboxes count]; i++) {
+            NSString* mboxName = executeMboxes[i][@"name"];
+            NSArray* metricsArr = executeMboxes[i][@"metrics"];
+            NSString* token = [metricsArr count] ? metricsArr[0][@"eventToken"] : @"";
+            if ([mboxName length] != 0 && [token length] != 0) {
+                [self.notificationTokens addObject:@{ @"name": mboxName, @"token": token}];
+            }
+        }
+    }];
+}
+
+- (IBAction)sendRawNotifications: (id)sender {
+    NSMutableArray *notifications = [[NSMutableArray alloc] init];
+    for (int i=0; i < [self.notificationTokens count]; i++) {
+        NSDictionary* notification = @{
+            @"id": [@(i) stringValue],
+            @"timestamp": @((long)([[NSDate date] timeIntervalSince1970] * 1000.0)),
+            @"type": @"click",
+            @"mbox": @ {
+                @"name": self.notificationTokens[i][@"name"],
+            },
+            @"tokens": @[self.notificationTokens[i][@"token"]],
+            @"parameters": @{
+                @"mbox_parameter_key3": @"mbox_parameter_value3"
+            }
+        };
+        [notifications addObject:notification];
+    }
+    if ([notifications count] == 0) {
+        return;
+    }
+    NSDictionary *request = @{
+        @"notifications": notifications
+    };
+    [AEPMobileTarget sendRawNotifications:request];
+    [self.notificationTokens removeAllObjects];
+}
 @end

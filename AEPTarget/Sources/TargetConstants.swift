@@ -15,7 +15,7 @@ import Foundation
 enum TargetConstants {
     static let EXTENSION_NAME = "com.adobe.module.target"
     static let FRIENDLY_NAME = "Target"
-    static let EXTENSION_VERSION = "3.2.0"
+    static let EXTENSION_VERSION = "3.3.0"
     static let DATASTORE_NAME = EXTENSION_NAME
     static let DEFAULT_SESSION_TIMEOUT: Int = 30 * 60 // 30 mins
     static let DELIVERY_API_URL_BASE = "https://%@/rest/v1/delivery/?client=%@&sessionId=%@"
@@ -176,12 +176,21 @@ enum TargetConstants {
         static let IDENTITY_RESPONSE = "TargetResponseIdentity"
         static let TARGET_RESPONSE = "TargetResponse"
         static let TARGET_REQUEST_RESPONSE = "TargetRequestResponse"
+        static let TARGET_RAW_REQUEST = "TargetRawRequest"
+        static let TARGET_RAW_RESPONSE = "TargetRawResponse"
+        static let TARGET_RAW_NOTIFICATIONS = "TargetRawNotifications"
         static let ANALYTICS_FOR_TARGET_REQUEST_EVENT_NAME = "AnalyticsForTargetRequest"
     }
 
     enum EventDataKeys {
         static let TARGET_PARAMETERS = "targetparams"
-        static let PREFETCH_REQUESTS = "prefetch"
+        static let REQUEST_TARGET_PARAMETERS = "targetParameters"
+        static let ID = "id"
+        static let CONTEXT = "context"
+        static let EXPERIENCE_CLOUD = "experienceCloud"
+        static let EXECUTE = "execute"
+        static let PREFETCH = "prefetch"
+        static let PROPERTY = "property"
         static let PREFETCH_ERROR = "prefetcherror"
         static let PREFETCH_RESULT = "prefetchresult"
         static let LOAD_REQUESTS = "request"
@@ -195,13 +204,24 @@ enum TargetConstants {
         static let IS_LOCATION_DISPLAYED = "islocationdisplayed"
         static let IS_LOCATION_CLICKED = "islocationclicked"
         static let MBOX_PARAMETERS = "parameters"
-        static let ORDER_PARAMETERS = "orderparameters"
-        static let PRODUCT_PARAMETERS = "productparameters"
-        static let PROFILE_PARAMETERS = "profileparameters"
+        static let ORDER_PARAMETERS = "order"
+        static let PRODUCT_PARAMETERS = "product"
+        static let PROFILE_PARAMETERS = "profileParameters"
+        static let AT_PROPERTY = "at_property"
         static let TARGET_CONTENT = "content"
         static let TARGET_DATA_PAYLOAD = "data"
         static let TARGET_RESPONSE_PAIR_ID = "responsePairId"
+        static let TARGET_DEFAULT_CONTENT = "defaultContent"
         static let TARGET_RESPONSE_EVENT_ID = "responseEventId"
+        static let RESPONSE_DATA = "responsedata"
+        static let RESPONSE_ERROR = "responseerror"
+        static let NOTIFICATIONS = "notifications"
+        static let NOTIFICATION = "notification"
+        static let NOTIFICATION_TIMESTAMP = "timestamp"
+        static let NOTIFICATION_TOKENS = "tokens"
+        static let ENVIRONMENT_ID = "environmentId"
+        static let IS_RAW_EVENT = "israwevent"
+
         // shared sate
         static let TNT_ID = "tntid"
         static let PREVIEW_INITIATED = "ispreviewinitiated"
@@ -298,5 +318,6 @@ enum TargetConstants {
 
     enum NetworkConnection {
         static let DEFAULT_CONNECTION_TIMEOUT_SEC = TimeInterval(5)
+        static let CONNECTION_RESPONSE_MESSAGE_NO_ERROR = "no error"
     }
 }

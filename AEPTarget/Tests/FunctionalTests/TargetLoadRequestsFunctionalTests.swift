@@ -93,6 +93,7 @@ class TargetLoadRequestsFunctionalTests: TargetFunctionalTestsBase {
                 "id",
                 "experienceCloud",
                 "context",
+                "property",
                 "execute",
                 "environmentId",
             ]))
@@ -126,6 +127,14 @@ class TargetLoadRequestsFunctionalTests: TargetFunctionalTestsBase {
                 "timeOffsetInMinutes",
             ]))
 
+            // verifies payloadDictionary["property"]
+            guard let propertyDictionary = payloadDictionary["property"] as? [String: Any] else {
+                XCTFail()
+                return nil
+            }
+            XCTAssertEqual("67444eb4-3681-40b4-831d-e082f5ccddcd", propertyDictionary["token"] as? String)
+            
+            // verifies payloadDictionary["execute"]
             guard let executeDictionary = payloadDictionary["execute"] as? [String: Any] else {
                 XCTFail()
                 return nil
@@ -223,6 +232,7 @@ class TargetLoadRequestsFunctionalTests: TargetFunctionalTestsBase {
                 "id",
                 "experienceCloud",
                 "context",
+                "property",
                 "execute",
                 "environmentId",
             ]))
@@ -333,6 +343,7 @@ class TargetLoadRequestsFunctionalTests: TargetFunctionalTestsBase {
                 "id",
                 "experienceCloud",
                 "context",
+                "property",
                 "execute",
                 "environmentId",
             ]))
@@ -449,6 +460,7 @@ class TargetLoadRequestsFunctionalTests: TargetFunctionalTestsBase {
                 "id",
                 "experienceCloud",
                 "context",
+                "property",
                 "execute",
                 "environmentId",
             ]))
@@ -526,6 +538,312 @@ class TargetLoadRequestsFunctionalTests: TargetFunctionalTestsBase {
         XCTAssertTrue(target.readyForEvent(loadRequestEvent))
         // handles the prefetch event
         eventListener(loadRequestEvent)
+    }
+
+    func testLoadRequestContent_withPropertyTokenInEventData() {
+        mockConfigSharedState = ["target.clientCode": "acopprod3", "global.privacy": "optedin"]
+
+        // mocked network response
+        let responseString = """
+            {
+              "status": 200,
+              "id": {
+                "tntId": "DE03D4AD-1FFE-421F-B2F2-303BF26822C1.35_0",
+                "marketingCloudVisitorId": "38209274908399841237725561727471528301"
+              },
+              "requestId": "01d4a408-6978-48f7-95c6-03f04160b257",
+              "client": "acopprod3",
+              "edgeHost": "mboxedge35.tt.omtrdc.net",
+              "execute": {
+                "mboxes": [
+                  {
+                    "index": 0,
+                    "name": "t_test_01",
+                    "options": [
+                      {
+                        "content": {
+                          "key1": "value1"
+                        },
+                        "type": "json"
+                      }
+                    ]
+                  }
+                ]
+              }
+            }
+        """
+
+        let requestDataArray: [[String: Any]?] = [
+            TargetRequest(mboxName: "t_test_01", defaultContent: "default", targetParameters: TargetParameters(parameters: ["mbox-parameter-key1": "mbox-parameter-value1"]), contentCallback: nil)
+        ].map {
+            $0.asDictionary()
+        }
+
+        let data: [String: Any] = [
+            "request": requestDataArray,
+            "targetparams": TargetParameters(profileParameters: mockProfileParam).asDictionary() as Any,
+            "at_property": "a2ec61d0-fab8-42f9-bf0f-699d169b48d8"
+        ]
+        let loadRequestEvent = Event(name: "TargetLoadRequest", type: "com.adobe.eventType.target", source: "com.adobe.eventSource.requestContent", data: data)
+
+        // creates a configuration shared state
+        mockRuntime.simulateSharedState(extensionName: "com.adobe.module.configuration", event: loadRequestEvent, data: (value: mockConfigSharedState, status: .set))
+
+        // creates an identity shared state
+        mockRuntime.simulateSharedState(extensionName: "com.adobe.module.identity", event: loadRequestEvent, data: (value: mockIdentityData, status: .set))
+
+        // registers the event listeners for Target extension
+        target.onRegistered()
+
+        // override network service
+        let mockNetworkService = TestableNetworkService()
+        ServiceProvider.shared.networkService = mockNetworkService
+        mockNetworkService.mock { request in
+            // verifies network request
+            XCTAssertNotNil(request)
+            guard let payloadDictionary = self.payloadAsDictionary(request.connectPayload) else {
+                XCTFail()
+                return nil
+            }
+            XCTAssertTrue(request.url.absoluteString.contains("https://acopprod3.tt.omtrdc.net/rest/v1/delivery/?client=acopprod3&sessionId="))
+            XCTAssertTrue(Set(payloadDictionary.keys) == Set([
+                "id",
+                "experienceCloud",
+                "context",
+                "property",
+                "execute",
+                "environmentId",
+            ]))
+
+            // verifies payloadDictionary["id"]
+            guard let idDictionary = payloadDictionary["id"] as? [String: Any] else {
+                XCTFail()
+                return nil
+            }
+            XCTAssertEqual("38209274908399841237725561727471528301", idDictionary["marketingCloudVisitorId"] as? String)
+            guard let vids = idDictionary["customerIds"] as? [[String: Any]] else {
+                XCTFail()
+                return nil
+            }
+            XCTAssertEqual(1, vids.count)
+            XCTAssertEqual("unknown", vids[0]["authenticatedState"] as? String)
+            XCTAssertEqual("vid_id_1", vids[0]["id"] as? String)
+            XCTAssertEqual("vid_type_1", vids[0]["integrationCode"] as? String)
+
+            // verifies payloadDictionary["context"]
+            guard let context = payloadDictionary["context"] as? [String: Any] else {
+                XCTFail()
+                return nil
+            }
+            XCTAssertTrue(Set(context.keys) == Set([
+                "userAgent",
+                "mobilePlatform",
+                "screen",
+                "channel",
+                "application",
+                "timeOffsetInMinutes",
+            ]))
+
+            // verifies payloadDictionary["property"]
+            guard let propertyDictionary = payloadDictionary["property"] as? [String: Any] else {
+                XCTFail()
+                return nil
+            }
+            XCTAssertEqual("a2ec61d0-fab8-42f9-bf0f-699d169b48d8", propertyDictionary["token"] as? String)
+            
+            // verifies payloadDictionary["execute"]
+            guard let executeDictionary = payloadDictionary["execute"] as? [String: Any] else {
+                XCTFail()
+                return nil
+            }
+
+            XCTAssertTrue(Set(executeDictionary.keys) == Set([
+                "mboxes",
+            ]))
+            guard let mboxes = executeDictionary["mboxes"] as? [[String: Any]] else {
+                XCTFail()
+                return nil
+            }
+            XCTAssertEqual(1, mboxes.count)
+            let executeJson = JSON(parseJSON: self.prettify(executeDictionary))
+            XCTAssertEqual(executeJson["mboxes"][0]["index"].intValue, 0)
+            XCTAssertEqual(executeJson["mboxes"][0]["name"].stringValue, "t_test_01")
+            XCTAssertEqual(1, executeJson["mboxes"][0]["profileParameters"].count)
+            XCTAssertEqual(executeJson["mboxes"][0]["profileParameters"]["name"].stringValue, "Smith")
+            XCTAssertEqual(1, executeJson["mboxes"][0]["parameters"].count)
+            XCTAssertEqual(executeJson["mboxes"][0]["parameters"]["mbox-parameter-key1"].stringValue, "mbox-parameter-value1")
+            let validResponse = HTTPURLResponse(url: URL(string: "https://acopprod3.tt.omtrdc.net/rest/v1/delivery")!, statusCode: 200, httpVersion: nil, headerFields: nil)
+            return (data: responseString.data(using: .utf8), response: validResponse, error: nil)
+        }
+        guard let eventListener: EventListener = mockRuntime.listeners["com.adobe.eventType.target-com.adobe.eventSource.requestContent"] else {
+            XCTFail()
+            return
+        }
+        XCTAssertTrue(target.readyForEvent(loadRequestEvent))
+        // handles the load request event
+        eventListener(loadRequestEvent)
+
+        // verifies the content of network response was stored correctly
+        XCTAssertEqual("DE03D4AD-1FFE-421F-B2F2-303BF26822C1.35_0", target.targetState.tntId)
+        XCTAssertEqual("mboxedge35.tt.omtrdc.net", target.targetState.edgeHost)
+        XCTAssertEqual(1, target.targetState.loadedMboxJsonDicts.count)
+        let mboxJson = prettify(target.targetState.loadedMboxJsonDicts["t_test_01"])
+        XCTAssertTrue(mboxJson.contains("\"name\" : \"t_test_01\""))
+
+        // verifies the Target's shared state
+        XCTAssertEqual(1, mockRuntime.createdSharedStates.count)
+        XCTAssertEqual("DE03D4AD-1FFE-421F-B2F2-303BF26822C1.35_0", mockRuntime.createdSharedStates[0]?["tntid"] as? String)
+    }
+    
+    func testLoadRequestContent_withPropertyTokenInConfigurationAndEventData() {
+        // mocked network response
+        let responseString = """
+            {
+              "status": 200,
+              "id": {
+                "tntId": "DE03D4AD-1FFE-421F-B2F2-303BF26822C1.35_0",
+                "marketingCloudVisitorId": "38209274908399841237725561727471528301"
+              },
+              "requestId": "01d4a408-6978-48f7-95c6-03f04160b257",
+              "client": "acopprod3",
+              "edgeHost": "mboxedge35.tt.omtrdc.net",
+              "execute": {
+                "mboxes": [
+                  {
+                    "index": 0,
+                    "name": "t_test_01",
+                    "options": [
+                      {
+                        "content": {
+                          "key1": "value1"
+                        },
+                        "type": "json"
+                      }
+                    ]
+                  }
+                ]
+              }
+            }
+        """
+
+        let requestDataArray: [[String: Any]?] = [
+            TargetRequest(mboxName: "t_test_01", defaultContent: "default", targetParameters: TargetParameters(parameters: ["mbox-parameter-key1": "mbox-parameter-value1"]), contentCallback: nil)
+        ].map {
+            $0.asDictionary()
+        }
+
+        let data: [String: Any] = [
+            "request": requestDataArray,
+            "targetparams": TargetParameters(profileParameters: mockProfileParam).asDictionary() as Any,
+            "at_property": "a2ec61d0-fab8-42f9-bf0f-699d169b48d8"
+        ]
+        let loadRequestEvent = Event(name: "request", type: "com.adobe.eventType.target", source: "com.adobe.eventSource.requestContent", data: data)
+
+        // creates a configuration's shared state
+        mockRuntime.simulateSharedState(extensionName: "com.adobe.module.configuration", event: loadRequestEvent, data: (value: mockConfigSharedState, status: .set))
+
+        // creates an identity's shared state
+        mockRuntime.simulateSharedState(extensionName: "com.adobe.module.identity", event: loadRequestEvent, data: (value: mockIdentityData, status: .set))
+
+        // registers the event listeners for Target extension
+        target.onRegistered()
+
+        // override network service
+        let mockNetworkService = TestableNetworkService()
+        ServiceProvider.shared.networkService = mockNetworkService
+        mockNetworkService.mock { request in
+            // verifies network request
+            XCTAssertNotNil(request)
+            guard let payloadDictionary = self.payloadAsDictionary(request.connectPayload) else {
+                XCTFail()
+                return nil
+            }
+            XCTAssertTrue(request.url.absoluteString.contains("https://acopprod3.tt.omtrdc.net/rest/v1/delivery/?client=acopprod3&sessionId="))
+            XCTAssertTrue(Set(payloadDictionary.keys) == Set([
+                "id",
+                "experienceCloud",
+                "context",
+                "property",
+                "execute",
+                "environmentId",
+            ]))
+
+            // verifies payloadDictionary["id"]
+            guard let idDictionary = payloadDictionary["id"] as? [String: Any] else {
+                XCTFail()
+                return nil
+            }
+            XCTAssertEqual("38209274908399841237725561727471528301", idDictionary["marketingCloudVisitorId"] as? String)
+            guard let vids = idDictionary["customerIds"] as? [[String: Any]] else {
+                XCTFail()
+                return nil
+            }
+            XCTAssertEqual(1, vids.count)
+            XCTAssertEqual("unknown", vids[0]["authenticatedState"] as? String)
+            XCTAssertEqual("vid_id_1", vids[0]["id"] as? String)
+            XCTAssertEqual("vid_type_1", vids[0]["integrationCode"] as? String)
+
+            // verifies payloadDictionary["context"]
+            guard let context = payloadDictionary["context"] as? [String: Any] else {
+                XCTFail()
+                return nil
+            }
+            XCTAssertTrue(Set(context.keys) == Set([
+                "userAgent",
+                "mobilePlatform",
+                "screen",
+                "channel",
+                "application",
+                "timeOffsetInMinutes",
+            ]))
+
+            // verifies payloadDictionary["property"]
+            guard let propertyDictionary = payloadDictionary["property"] as? [String: Any] else {
+                XCTFail()
+                return nil
+            }
+            XCTAssertEqual("67444eb4-3681-40b4-831d-e082f5ccddcd", propertyDictionary["token"] as? String)
+            
+            // verifies payloadDictionary["execute"]
+            guard let executeDictionary = payloadDictionary["execute"] as? [String: Any] else {
+                XCTFail()
+                return nil
+            }
+
+            XCTAssertTrue(Set(executeDictionary.keys) == Set([
+                "mboxes",
+            ]))
+            guard let mboxes = executeDictionary["mboxes"] as? [[String: Any]] else {
+                XCTFail()
+                return nil
+            }
+            XCTAssertEqual(1, mboxes.count)
+            let executeJson = JSON(parseJSON: self.prettify(executeDictionary))
+            XCTAssertEqual(executeJson["mboxes"][0]["index"].intValue, 0)
+            XCTAssertEqual(executeJson["mboxes"][0]["name"].stringValue, "t_test_01")
+            XCTAssertEqual(executeJson["mboxes"][0]["profileParameters"]["name"].stringValue, "Smith")
+            XCTAssertEqual(executeJson["mboxes"][0]["parameters"]["mbox-parameter-key1"].stringValue, "mbox-parameter-value1")
+            let validResponse = HTTPURLResponse(url: URL(string: "https://acopprod3.tt.omtrdc.net/rest/v1/delivery")!, statusCode: 200, httpVersion: nil, headerFields: nil)
+            return (data: responseString.data(using: .utf8), response: validResponse, error: nil)
+        }
+        guard let eventListener: EventListener = mockRuntime.listeners["com.adobe.eventType.target-com.adobe.eventSource.requestContent"] else {
+            XCTFail()
+            return
+        }
+        XCTAssertTrue(target.readyForEvent(loadRequestEvent))
+        // handles the load request event
+        eventListener(loadRequestEvent)
+
+        // verifies the content of network response was stored correctly
+        XCTAssertEqual("DE03D4AD-1FFE-421F-B2F2-303BF26822C1.35_0", target.targetState.tntId)
+        XCTAssertEqual("mboxedge35.tt.omtrdc.net", target.targetState.edgeHost)
+        XCTAssertEqual(1, target.targetState.loadedMboxJsonDicts.count)
+        let mboxJson = prettify(target.targetState.loadedMboxJsonDicts["t_test_01"])
+        XCTAssertTrue(mboxJson.contains("\"name\" : \"t_test_01\""))
+
+        // verifies the Target's shared state
+        XCTAssertEqual(1, mockRuntime.createdSharedStates.count)
+        XCTAssertEqual("DE03D4AD-1FFE-421F-B2F2-303BF26822C1.35_0", mockRuntime.createdSharedStates[0]?["tntid"] as? String)
     }
 
     func testLoadRequestContent_empty_requests() {

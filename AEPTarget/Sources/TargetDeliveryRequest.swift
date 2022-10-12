@@ -167,18 +167,16 @@ struct Mboxes: Codable {
 
 struct Mbox: Codable {
     var name: String
-    var index: Int?
-    var state: String?
+    var index: Int
     var analytics: [String: String]?
     var parameters: [String: String]?
     var profileParameters: [String: String]?
     var order: Order?
     var product: Product?
 
-    init(name: String, index: Int? = nil, state: String? = nil, parameters: [String: String]? = nil, profileParameters: [String: String]? = nil, order: Order? = nil, product: Product? = nil, analytics: [String: String]? = nil) {
+    init(name: String, index: Int, parameters: [String: String]? = nil, profileParameters: [String: String]? = nil, order: Order? = nil, product: Product? = nil, analytics: [String: String]? = nil) {
         self.name = name
         self.index = index
-        self.state = state
         self.profileParameters = profileParameters
         self.order = order
         self.product = product
@@ -191,14 +189,14 @@ struct Notification: Codable {
     var id: String
     var timestamp: Int64
     var type: String
-    var mbox: Mbox
+    var mbox: NotificationMbox
     var tokens: [String]?
     var parameters: [String: String]?
     var profileParameters: [String: String]?
     var order: Order?
     var product: Product?
 
-    init(id: String, timestamp: Int64, type: String, mbox: Mbox, tokens: [String]? = nil, parameters: [String: String]? = nil, profileParameters: [String: String]? = nil, order: Order? = nil, product: Product? = nil) {
+    init(id: String, timestamp: Int64, type: String, mbox: NotificationMbox, tokens: [String]? = nil, parameters: [String: String]? = nil, profileParameters: [String: String]? = nil, order: Order? = nil, product: Product? = nil) {
         self.id = id
         self.timestamp = timestamp
         self.type = type
@@ -208,6 +206,16 @@ struct Notification: Codable {
         self.profileParameters = profileParameters
         self.order = order
         self.product = product
+    }
+}
+
+struct NotificationMbox: Codable {
+    var name: String
+    var state: String?
+
+    init(name: String, state: String? = nil) {
+        self.name = name
+        self.state = state
     }
 }
 

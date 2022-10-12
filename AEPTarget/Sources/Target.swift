@@ -24,7 +24,7 @@ public class Target: NSObject, Extension {
         return ServiceProvider.shared.networkService
     }
 
-    private var isInPreviewMode: Bool {
+    private var inPreviewMode: Bool {
         if let previewParameters = previewManager.previewParameters, !previewParameters.isEmpty {
             return true
         }
@@ -118,6 +118,11 @@ public class Target: NSObject, Extension {
     }
 
     private func handleRequestContent(_ event: Event) {
+        if event.isRawEvent {
+            handleRawRequest(event)
+            return
+        }
+
         if event.isPrefetchEvent {
             prefetchContent(event)
             return
@@ -182,7 +187,7 @@ public class Target: NSObject, Extension {
     /// Handle prefetch content request
     /// - Parameter event: an event of type target and  source request content is dispatched by the `EventHub`
     private func prefetchContent(_ event: Event) {
-        if isInPreviewMode {
+        if inPreviewMode {
             dispatchPrefetchErrorEvent(triggerEvent: event, errorMessage: "Target prefetch can't be used while in preview mode")
             return
         }
@@ -269,7 +274,7 @@ public class Target: NSObject, Extension {
 
         let timestamp = Int64(event.timestamp.timeIntervalSince1970 * 1000.0)
 
-        if !isInPreviewMode {
+        if !inPreviewMode {
             Log.debug(label: Target.LOG_TAG, "Current cached mboxes : \(targetState.prefetchedMboxJsonDicts.keys.description), size: \(targetState.prefetchedMboxJsonDicts.count)")
             requestsToSend = processCachedTargetRequest(event: event, batchRequests: targetRequests, timeStamp: timestamp)
         }
@@ -287,8 +292,8 @@ public class Target: NSObject, Extension {
             self.processTargetRequestResponse(batchRequests: requestsToSend, event: event, connection: connection)
         }
 
-        if let err = error {
-            Log.warning(label: Target.LOG_TAG, err)
+        if let error = error {
+            Log.warning(label: Target.LOG_TAG, error)
         }
     }
 
@@ -366,7 +371,7 @@ public class Target: NSObject, Extension {
     /// - If the mbox is either not prefetched or loaded previously.
     /// - If the clicked token is empty or nil for the loaded mbox.
     private func clickedLocation(_ event: Event) {
-        if isInPreviewMode {
+        if inPreviewMode {
             Log.warning(label: Target.LOG_TAG, "Target location clicked notification can't be sent while in preview mode")
             return
         }
@@ -498,7 +503,7 @@ public class Target: NSObject, Extension {
 
         if let tntId = response.tntId { targetState.updateTntId(tntId) }
         if let edgeHost = response.edgeHost { targetState.updateEdgeHost(edgeHost) }
-        createSharedState(data: targetState.generateSharedState(), event: nil)
+        createSharedState(data: targetState.generateSharedState(), event: event)
 
         var mboxesDictionary = [String: [String: Any]]()
         if let mboxes = response.executeMboxes {
@@ -643,7 +648,7 @@ public class Target: NSObject, Extension {
         return lifecycleContextData
     }
 
-    private func sendTargetRequest(_: Event,
+    private func sendTargetRequest(_ event: Event,
                                    batchRequests: [TargetRequest]? = nil,
                                    prefetchRequests: [TargetPrefetch]? = nil,
                                    targetParameters: TargetParameters? = nil,
@@ -655,9 +660,11 @@ public class Target: NSObject, Extension {
         let thirdPartyId = targetState.thirdPartyId
         let environmentId = Int64(targetState.environmentId)
         let lifecycleContextData = getLifecycleDataForTarget(lifecycleData: lifecycleData)
-        let propToken = targetState.propertyToken
 
-        guard let requestJson = TargetDeliveryRequestBuilder.build(tntId: tntId, thirdPartyId: thirdPartyId, identitySharedState: identityData, lifecycleSharedState: lifecycleContextData, targetPrefetchArray: prefetchRequests, targetRequestArray: batchRequests, targetParameters: targetParameters, notifications: targetState.notifications.isEmpty ? nil : targetState.notifications, environmentId: environmentId, propertyToken: propToken, qaModeParameters: previewManager.previewParameters)?.toJSON() else {
+        // Give preference to property token passed in configuration over event data "at_property".
+        let propertyToken = !targetState.propertyToken.isEmpty ? targetState.propertyToken : event.propertyToken
+
+        guard let requestJson = TargetDeliveryRequestBuilder.build(tntId: tntId, thirdPartyId: thirdPartyId, identitySharedState: identityData, lifecycleSharedState: lifecycleContextData, targetPrefetchArray: prefetchRequests, targetRequestArray: batchRequests, targetParameters: targetParameters, notifications: targetState.notifications.isEmpty ? nil : targetState.notifications, environmentId: environmentId, propertyToken: propertyToken, qaModeParameters: previewManager.previewParameters)?.toJSON() else {
             return "Failed to generate request parameter(JSON) for target delivery API call"
         }
 
@@ -819,6 +826,162 @@ public class Target: NSObject, Extension {
         for request in batchRequests {
             dispatchMboxContent(event: event, content: request.defaultContent, data: nil, responsePairId: request.responsePairId)
         }
+    }
+
+    /// Executes a raw Target prefetch or execute request for the provided request event data.
+    /// .
+    /// - Parameter event: a Target request content event containing request data.
+    private func handleRawRequest(_ event: Event) {
+        let execute: Mboxes? = event.getTypedData(for: TargetConstants.EventDataKeys.EXECUTE)
+        let prefetch: Mboxes? = event.getTypedData(for: TargetConstants.EventDataKeys.PREFETCH)
+        let notifications: [Notification]? = event.getTypedData(for: TargetConstants.EventDataKeys.NOTIFICATIONS)
+        let isContentRequest: Bool = prefetch != nil || execute != nil
+        var error: String?
+
+        defer {
+            if error != nil, isContentRequest {
+                dispatchTargetRawResponse(event: event, error: error, data: nil)
+            }
+        }
+
+        var environmentId = Int64(targetState.environmentId)
+        if environmentId == 0 {
+            environmentId = event.environmentId
+        }
+
+        let identitySharedState = getSharedState(extensionName: TargetConstants.Identity.EXTENSION_NAME, event: event)?.value
+
+        var id: TargetIDs? = event.getTypedData(for: TargetConstants.EventDataKeys.ID)
+        if id == nil {
+            id = TargetDeliveryRequestBuilder.getTargetIDs(tntid: targetState.tntId, thirdPartyId: targetState.thirdPartyId, identitySharedState: identitySharedState)
+        }
+
+        var experienceCloud: ExperienceCloudInfo? = event.getTypedData(for: TargetConstants.EventDataKeys.EXPERIENCE_CLOUD)
+        if experienceCloud == nil {
+            experienceCloud = TargetDeliveryRequestBuilder.getExperienceCloudInfo(identitySharedState: identitySharedState)
+        }
+
+        var context: TargetContext? = event.getTypedData(for: TargetConstants.EventDataKeys.CONTEXT)
+        if context == nil {
+            context = TargetDeliveryRequestBuilder.getTargetContext()
+        }
+
+        // Give preference to property token passed in configuration over event data.
+        var property: Property?
+        if !targetState.propertyToken.isEmpty {
+            property = Property(token: targetState.propertyToken)
+        } else {
+            property = event.getTypedData(for: TargetConstants.EventDataKeys.PROPERTY)
+        }
+
+        var qaMode: [String: AnyCodable]?
+        if let qaModeParameters = previewManager.previewParameters, !qaModeParameters.isEmpty, let qaModeData = qaModeParameters.data(using: .utf8) {
+            let qaModeDict = try? JSONSerialization.jsonObject(with: qaModeData, options: []) as? [String: Any]
+            qaMode = AnyCodable.from(dictionary: qaModeDict?[TargetConstants.TargetJson.QA_MODE] as? [String: Any])
+        }
+
+        guard let requestJson = TargetDeliveryRequest(id: id!, context: context!, experienceCloud: experienceCloud!, prefetch: prefetch, execute: execute, notifications: notifications, environmentId: environmentId, property: property, qaMode: qaMode).toJSON() else {
+            error = TargetError.ERROR_INVALID_REQUEST
+            Log.debug(label: Target.LOG_TAG, "handleRawRequest - Cannot process raw Target request, failed to generate request JSON for delivery API call.")
+            return
+        }
+
+        // Check whether request can be sent
+        if let requestError = prepareForTargetRequest() {
+            error = requestError
+            Log.debug(label: Target.LOG_TAG, "handleRawRequest - Cannot process the raw Target request: \(requestError)")
+            return
+        }
+
+        guard let clientCode = targetState.clientCode else {
+            error = TargetError.ERROR_NO_CLIENT_CODE
+            Log.debug(label: Target.LOG_TAG, "handleRawRequest - Cannot process raw Target request, client code configuration is missing.")
+            return
+        }
+
+        guard let url = URL(string: getTargetDeliveryURL(targetServer: targetState.targetServer, clientCode: clientCode)) else {
+            Log.debug(label: Target.LOG_TAG, "handleRawRequest - Cannot process raw Target request, failed to generate the URL for Target delivery API call.")
+            return
+        }
+
+        let timeout = targetState.networkTimeout
+        let headers = [TargetConstants.HEADER_CONTENT_TYPE: TargetConstants.HEADER_CONTENT_TYPE_JSON]
+
+        // https://developers.adobetarget.com/api/delivery-api/#tag/Delivery-API
+        let request = NetworkRequest(url: url, httpMethod: .post, connectPayload: requestJson, httpHeaders: headers, connectTimeout: timeout, readTimeout: timeout)
+
+        stopEvents()
+        Log.debug(label: Target.LOG_TAG, "handleRawRequest - Sending Target request with url: \(url.absoluteString) and body: \(requestJson).")
+
+        networkService.connectAsync(networkRequest: request) { connection in
+            Log.debug(label: Target.LOG_TAG, "handleRawRequest - Target response is received with code: \(connection.responseCode ?? -1) and data: \(connection.responseString ?? "").")
+            self.targetState.updateSessionTimestamp()
+            self.processTargetRawResponse(event: event, isContentRequest: isContentRequest, connection: connection)
+        }
+        startEvents()
+    }
+
+    /// Processes the network response after the Target delivery API call for raw request.
+    ///
+    /// - Parameters:
+    ///     - event: The Target request event which triggered this network call.
+    ///     - connection: `NetworkService.HttpConnection` instance.
+    private func processTargetRawResponse(event: Event, isContentRequest: Bool, connection: HttpConnection) {
+        var error: String? = connection.error?.localizedDescription
+        var responseData: [String: Any]?
+
+        defer {
+            if isContentRequest {
+                dispatchTargetRawResponse(event: event, error: error, data: responseData)
+            }
+        }
+
+        guard
+            let data = connection.data,
+            let responseDictAnyCodable = try? JSONDecoder().decode([String: AnyCodable].self, from: data),
+            let responseDict = AnyCodable.toAnyDictionary(dictionary: responseDictAnyCodable)
+        else {
+            error = TargetError.ERROR_RESPONSE_PARSING_FAILED
+            Log.debug(label: Target.LOG_TAG, "processTargetRawResponse - Target response parser initialization failed.")
+            return
+        }
+
+        let response = TargetDeliveryResponse(responseJson: responseDict)
+
+        if let connectionResponseCode = connection.responseCode, connectionResponseCode != 200 {
+            error = response.errorMessage ?? connection.responseMessage ?? error
+            Log.debug(label: Target.LOG_TAG, "processTargetRawResponse - Target raw execute request failed with response code: \(connectionResponseCode) and error: \(error ?? ""))")
+            return
+        }
+
+        if let tntId = response.tntId { targetState.updateTntId(tntId) }
+        if let edgeHost = response.edgeHost { targetState.updateEdgeHost(edgeHost) }
+        createSharedState(data: targetState.generateSharedState(), event: event)
+
+        responseData = response.responseJson
+    }
+
+    /// Dispatches the Target response content event for raw request.
+    ///
+    /// - Parameters:
+    ///     - event: the Target raw request event.
+    ///     - error: (optional) string indicating error when requesting content from Target.
+    ///     - data: (optional) dictionary containing the response payload from Target for the raw execute or prefetch request.
+    private func dispatchTargetRawResponse(event: Event, error: String?, data: [String: Any]?) {
+        Log.trace(label: Target.LOG_TAG, "dispatchTargetRawResponse - Dispatching response event for Target raw request.")
+
+        var eventData: [String: Any] = [:]
+        if let data = data {
+            eventData[TargetConstants.EventDataKeys.RESPONSE_DATA] = data
+        } else {
+            eventData[TargetConstants.EventDataKeys.RESPONSE_ERROR] = error ?? ""
+        }
+
+        let responseEvent = event.createResponseEvent(name: TargetConstants.EventName.TARGET_RAW_RESPONSE,
+                                                      type: EventType.target,
+                                                      source: EventSource.responseContent,
+                                                      data: eventData)
+        dispatch(event: responseEvent)
     }
 
     /// Dispatches the Target Response Content Event.

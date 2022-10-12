@@ -58,7 +58,7 @@ import Foundation
             }
         }
 
-        var eventData: [String: Any] = [TargetConstants.EventDataKeys.PREFETCH_REQUESTS: prefetchDataArray]
+        var eventData: [String: Any] = [TargetConstants.EventDataKeys.PREFETCH: prefetchDataArray]
         if let targetParametersDict = targetParameters?.asDictionary() {
             eventData[TargetConstants.EventDataKeys.TARGET_PARAMETERS] = targetParametersDict
         }
@@ -391,5 +391,75 @@ import Foundation
             Log.warning(label: LOG_TAG, "Missing callback for target request with pair id the \(responsePairId)")
             return
         }
+    }
+
+    /// Retrieves Target prefetch or execute response for mbox locations from the configured Target server.
+    ///
+    /// - Parameters:
+    ///   - request: a dictionary containing prefetch or execute request data in the Target v1 delivery API request format.
+    ///   - completion: the callback which will be invoked with the Target response data or error message after the request is completed.
+    @objc(executeRawRequest:completion:)
+    static func executeRawRequest(_ request: [String: Any], _ completion: @escaping ([String: Any]?, Error?) -> Void) {
+        guard !request.isEmpty else {
+            Log.warning(label: LOG_TAG, "Failed to execute raw Target request, the provided request dictionary is empty.")
+            completion(nil, AEPError.invalidRequest)
+            return
+        }
+
+        guard request.contains(where: { TargetConstants.EventDataKeys.EXECUTE == $0.key || TargetConstants.EventDataKeys.PREFETCH == $0.key }) else {
+            Log.warning(label: LOG_TAG, "Failed to execute raw Target request, the provided request dictionary doesn't contain prefetch or execute data.")
+            completion(nil, AEPError.invalidRequest)
+            return
+        }
+
+        var eventData = request
+        eventData[TargetConstants.EventDataKeys.IS_RAW_EVENT] = true
+
+        let event = Event(name: TargetConstants.EventName.TARGET_RAW_REQUEST, type: EventType.target, source: EventSource.requestContent, data: eventData)
+
+        MobileCore.dispatch(event: event) { responseEvent in
+            guard let responseEvent = responseEvent else {
+                completion(nil, TargetError(message: TargetError.ERROR_TIMEOUT))
+                return
+            }
+
+            if let responseError = responseEvent.error {
+                completion(nil, TargetError(message: responseError))
+                return
+            }
+
+            guard let executeResponse = responseEvent.data?[TargetConstants.EventDataKeys.RESPONSE_DATA] as? [String: Any] else {
+                let error = "Unable to handle response, raw response data is not available."
+                completion(nil, TargetError(message: error))
+                return
+            }
+
+            completion(executeResponse, nil)
+        }
+    }
+
+    /// Sends notification request(s) to Target using the provided notification data in the request.
+    ///
+    /// The display or click event tokens, required for the Target notifications, can be retrieved from the response of a prior `executeRawRequest` API call.
+    ///
+    /// - Parameters:
+    ///   - request: A dictionary containing notifications data in the Target v1 delivery API request format.
+    @objc(sendRawNotifications:)
+    static func sendRawNotifications(_ request: [String: Any]) {
+        if request.isEmpty {
+            Log.warning(label: LOG_TAG, "Failed to send raw Target notification, provided request dictionary is empty.")
+            return
+        }
+
+        guard request.contains(where: { TargetConstants.EventDataKeys.NOTIFICATIONS == $0.key }) else {
+            Log.warning(label: LOG_TAG, "Failed to execute raw Target request, the provided request dictionary doesn't contain notifications data.")
+            return
+        }
+
+        var eventData = request
+        eventData[TargetConstants.EventDataKeys.IS_RAW_EVENT] = true
+
+        let event = Event(name: TargetConstants.EventName.TARGET_RAW_NOTIFICATIONS, type: EventType.target, source: EventSource.requestContent, data: eventData)
+        MobileCore.dispatch(event: event)
     }
 }

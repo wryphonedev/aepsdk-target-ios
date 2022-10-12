@@ -176,7 +176,7 @@ class DeliveryRequestBuilderTests: XCTestCase {
                 TargetPrefetch(name: "Drink_1", targetParameters: TargetParameters(profileParameters: ["mbox-parameter-key1": "mbox-parameter-value1"])),
                 TargetPrefetch(name: "Drink_2", targetParameters: TargetParameters(profileParameters: ["mbox-parameter-key1": "mbox-parameter-value1"])),
             ],
-            targetParameters: TargetParameters(profileParameters: ["name": "Smith"])
+            targetParameters: TargetParameters(parameters: ["at_property": "ccc8cdb3-c67a-6126-10b3-65d7f4d32b69"], profileParameters: ["name": "Smith"])
         )
 
         if let data = EXPECTED_PREFETCH_JSON.data(using: .utf8),
@@ -189,6 +189,7 @@ class DeliveryRequestBuilderTests: XCTestCase {
             context["timeOffsetInMinutes"] = 0
             XCTAssertTrue(NSDictionary(dictionary: jsonDictionary["context"] as? [String: Any] ?? [String: Any]()).isEqual(to: context))
             XCTAssertTrue(NSDictionary(dictionary: jsonDictionary["prefetch"] as? [String: Any] ?? [String: Any]()).isEqual(to: result["prefetch"] as? [String: Any] ?? [String: Any]()))
+            XCTAssertNil(result["property"])
             return
         }
 
@@ -197,31 +198,37 @@ class DeliveryRequestBuilderTests: XCTestCase {
 
     func testBuild_Notification() {
         ServiceProvider.shared.systemInfoService = MockedSystemInfoService()
+        
+        let lifecycleContextData = [
+            "a.OSVersion": "iOS 14.2",
+            "a.DaysSinceFirstUse": "0",
+            "a.CrashEvent": "CrashEvent",
+            "a.CarrierName": "(nil)",
+            "a.Resolution": "828x1792",
+            "a.RunMode": "Application",
+            "a.ignoredSessionLength": "-1605549540",
+            "a.HourOfDay": "11",
+            "a.AppID": "v5ManualTestApp 1.0 (1)",
+            "a.DayOfWeek": "2",
+            "a.DeviceName": "x86_64",
+            "a.LaunchEvent": "LaunchEvent",
+            "a.Launches": "2",
+            "a.DaysSinceLastUse": "0",
+            "a.locale": "en-US",
+        ]
+        
+        guard let notification = TargetDeliveryRequestBuilder.getDisplayNotification(mboxName: "Drink_1", cachedMboxJson: ["state": "somestate", "options":[ ["eventToken": "token1"]]], targetParameters: TargetParameters(parameters: ["at_property": "ccc8cdb3-c67a-6126-10b3-65d7f4d32b69"]), timestamp: 12345, lifecycleContextData: lifecycleContextData) else {
+            XCTFail()
+            return
+        }
+
         let request = TargetDeliveryRequestBuilder.build(
             tntId: "tnt_id_1",
             thirdPartyId: "thirdPartyId_1",
             identitySharedState: ["mid": "mid_xxxx", "blob": "blob_xxx", "locationhint": "9"],
-            lifecycleSharedState: [
-                "a.OSVersion": "iOS 14.2",
-                "a.DaysSinceFirstUse": "0",
-                "a.CrashEvent": "CrashEvent",
-                "a.CarrierName": "(nil)",
-                "a.Resolution": "828x1792",
-                "a.RunMode": "Application",
-                "a.ignoredSessionLength": "-1605549540",
-                "a.HourOfDay": "11",
-                "a.AppID": "v5ManualTestApp 1.0 (1)",
-                "a.DayOfWeek": "2",
-                "a.DeviceName": "x86_64",
-                "a.LaunchEvent": "LaunchEvent",
-                "a.Launches": "2",
-                "a.DaysSinceLastUse": "0",
-                "a.locale": "en-US",
-            ],
+            lifecycleSharedState: lifecycleContextData,
             targetParameters: TargetParameters(profileParameters: ["name": "Smith"]),
-            notifications: [
-                Notification(id: "id1", timestamp: 12345, type: "display", mbox: Mbox(name: "Drink_1", state: "somestate"), tokens: ["token1"], parameters: nil),
-            ]
+            notifications: [ notification ]
         )
 
         if let data = EXPECTED_NOTIFICATION_JSON.data(using: .utf8),
@@ -234,10 +241,11 @@ class DeliveryRequestBuilderTests: XCTestCase {
             context["timeOffsetInMinutes"] = 0
             XCTAssertTrue(NSDictionary(dictionary: jsonDictionary["context"] as? [String: Any] ?? [String: Any]()).isEqual(to: context))
 
-            let arrayA = NSSet(array: jsonDictionary["notifications"] as? [[String: Any]] ?? [[String: Any]]())
-            let arrayB = NSSet(array: result["notifications"] as? [[String: Any]] ?? [[String: Any]]())
-            XCTAssertTrue(arrayA.isEqual(to: arrayB as? Set<AnyHashable> ?? Set<AnyHashable>()))
-
+            let expectedResult = jsonDictionary["notifications"] as? [[String: Any]] ?? [[String: Any]]()
+            let expectedResultWithoutId = NSSet(array: expectedResult.filter { !$0.keys.contains("id") })
+            let actualResult = jsonDictionary["notifications"] as? [[String: Any]] ?? [[String: Any]]()
+            let actualResultWithoutId = NSSet(array: actualResult.filter { !$0.keys.contains("id") })
+            XCTAssertTrue(actualResultWithoutId.isEqual(to: expectedResultWithoutId as? Set<AnyHashable> ?? Set<AnyHashable>()))
             return
         }
 
@@ -265,7 +273,7 @@ class DeliveryRequestBuilderTests: XCTestCase {
         XCTAssertEqual("category1", notification?.product?.categoryId)
     }
 
-    func testGetDisplayNotification_withNoTokense() {
+    func testGetDisplayNotification_withNoTokens() {
         let notification = TargetDeliveryRequestBuilder.getDisplayNotification(mboxName: "Drink_1", cachedMboxJson: ["state": "state1"], targetParameters: TargetParameters(parameters: ["p": "v"], profileParameters: ["name": "myname"], order: TargetOrder(id: "oid1"), product: TargetProduct(productId: "pid1")), timestamp: 12345, lifecycleContextData: ["a.OSVersion": "iOS 14.2"])
 
         XCTAssertNil(notification)
@@ -327,21 +335,23 @@ class DeliveryRequestBuilderTests: XCTestCase {
                 "a.DaysSinceLastUse": "0",
                 "a.locale": "en-US",
             ],
-            targetRequestArray: [TargetRequest(mboxName: "Drink_1", defaultContent: "default", targetParameters: TargetParameters(profileParameters: ["mbox-parameter-key1": "mbox-parameter-value1"]), contentCallback: nil),
-                                 TargetRequest(mboxName: "Drink_2", defaultContent: "default2", targetParameters: TargetParameters(profileParameters: ["mbox-parameter-key1": "mbox-parameter-value1"]), contentCallback: nil)],
-            targetParameters: TargetParameters(profileParameters: ["name": "Smith"])
+            targetRequestArray: [TargetRequest(mboxName: "Drink_1", defaultContent: "default", targetParameters: TargetParameters(parameters: ["mbox-parameter-key1": "mbox-parameter-value1"]), contentCallback: nil),
+                                 TargetRequest(mboxName: "Drink_2", defaultContent: "default2", targetParameters: TargetParameters(parameters: ["mbox-parameter-key1": "mbox-parameter-value1", "at_property": "ccc8cdb3-c67a-6126-10b3-65d7f4d32b69"]), contentCallback: nil)],
+            targetParameters: TargetParameters(profileParameters: ["name": "Smith"]),
+            propertyToken: "67444eb4-3681-40b4-831d-e082f5ccddcd"
         )
 
         if let data = EXPECTED_BATCH_JSON.data(using: .utf8),
            let jsonArray = try? JSONSerialization.jsonObject(with: data, options: .allowFragments) as? [String: Any],
            let result = request?.asDictionary()
         {
-            XCTAssertTrue(NSDictionary(dictionary: jsonArray["id"] as! [String: Any]).isEqual(to: result["id"] as! [String: Any]))
-            XCTAssertTrue(NSDictionary(dictionary: jsonArray["experienceCloud"] as! [String: Any]).isEqual(to: result["experienceCloud"] as! [String: Any]))
-            var context = result["context"] as! [String: Any]
-            context["timeOffsetInMinutes"] = 0
-            XCTAssertTrue(NSDictionary(dictionary: jsonArray["context"] as! [String: Any]).isEqual(to: context))
-            XCTAssertTrue(NSDictionary(dictionary: jsonArray["execute"] as! [String: Any]).isEqual(to: result["execute"] as! [String: Any]))
+            XCTAssertTrue(NSDictionary(dictionary: jsonArray["id"] as? [String: Any] ?? [String: Any]()).isEqual(to: result["id"] as? [String: Any] ?? [String: Any]()))
+            XCTAssertTrue(NSDictionary(dictionary: jsonArray["experienceCloud"] as? [String: Any] ?? [String: Any]()).isEqual(to: result["experienceCloud"] as? [String: Any] ?? [:]))
+            var context = result["context"] as? [String: Any]
+            context?["timeOffsetInMinutes"] = 0
+            XCTAssertTrue(NSDictionary(dictionary: jsonArray["context"] as? [String: Any] ?? [String: Any]()).isEqual(to: context ?? [String: Any]()))
+            XCTAssertTrue(NSDictionary(dictionary: jsonArray["property"] as? [String: Any] ?? [String: Any]()).isEqual(to: result["property"] as? [String: Any] ?? [String: Any]()))
+            XCTAssertTrue(NSDictionary(dictionary: jsonArray["execute"] as? [String: Any] ?? [String: Any]()).isEqual(to: result["execute"] as? [String: Any] ?? [String: Any]()))
             return
         }
 
@@ -484,6 +494,9 @@ class DeliveryRequestBuilderTests: XCTestCase {
         },
         "timeOffsetInMinutes": 0
       },
+      "property": {
+        "token": "67444eb4-3681-40b4-831d-e082f5ccddcd"
+      },
       "execute": {
         "mboxes": [
           {
@@ -502,11 +515,11 @@ class DeliveryRequestBuilderTests: XCTestCase {
               "a.AppID": "v5ManualTestApp 1.0 (1)",
               "a.Launches": "2",
               "a.DaysSinceLastUse": "0",
-              "a.locale": "en-US"
+              "a.locale": "en-US",
+              "mbox-parameter-key1": "mbox-parameter-value1"
             },
             "profileParameters": {
-              "name": "Smith",
-              "mbox-parameter-key1": "mbox-parameter-value1"
+              "name": "Smith"
             },
             "name": "Drink_1",
             "index": 0
@@ -527,10 +540,10 @@ class DeliveryRequestBuilderTests: XCTestCase {
               "a.AppID": "v5ManualTestApp 1.0 (1)",
               "a.Launches": "2",
               "a.DaysSinceLastUse": "0",
-              "a.locale": "en-US"
+              "a.locale": "en-US",
+              "mbox-parameter-key1": "mbox-parameter-value1"
             },
             "profileParameters": {
-              "mbox-parameter-key1": "mbox-parameter-value1",
               "name": "Smith"
             },
             "name": "Drink_2",

@@ -16,46 +16,88 @@ import Foundation
 extension Event {
     /// Reads an array`TargetPrefetch` from the event data
     var prefetchObjectArray: [TargetPrefetch]? {
-        return TargetPrefetch.from(dictionaries: data?[TargetConstants.EventDataKeys.PREFETCH_REQUESTS] as? [[String: Any]])
+        TargetPrefetch.from(dictionaries: data?[TargetConstants.EventDataKeys.PREFETCH] as? [[String: Any]])
     }
 
     /// Reads the `TargetParameters` from the event data
     var targetParameters: TargetParameters? {
-        return TargetParameters.from(dictionary: data?[TargetConstants.EventDataKeys.TARGET_PARAMETERS] as? [String: Any])
+        TargetParameters.from(dictionary: data?[TargetConstants.EventDataKeys.TARGET_PARAMETERS] as? [String: Any])
+    }
+
+    /// Reads the Target `at_property` from the event data
+    var propertyToken: String {
+        data?[TargetConstants.EventDataKeys.AT_PROPERTY] as? String ?? ""
     }
 
     /// Returns true if this event is a prefetch request event
     var isPrefetchEvent: Bool {
-        return data?[TargetConstants.EventDataKeys.PREFETCH_REQUESTS] != nil
+        data?[TargetConstants.EventDataKeys.PREFETCH] != nil
     }
 
     /// Returns true if this event is a load request event
     var isLoadRequest: Bool {
-        return data?[TargetConstants.EventDataKeys.LOAD_REQUESTS] != nil
+        data?[TargetConstants.EventDataKeys.LOAD_REQUESTS] != nil
     }
 
     /// Reads an array`TargetRequest` from the event data
     var targetRequests: [TargetRequest]? {
-        return TargetRequest.from(dictionaries: data?[TargetConstants.EventDataKeys.LOAD_REQUESTS] as? [[String: Any]])
+        guard let requests = TargetRequest.from(dictionaries: data?[TargetConstants.EventDataKeys.LOAD_REQUESTS] as? [[String: Any]]),
+              !requests.isEmpty
+        else {
+            return nil
+        }
+        return requests
     }
 
     /// Returns true if the event is location display request event
     var isLocationsDisplayedEvent: Bool {
-        return data?[TargetConstants.EventDataKeys.IS_LOCATION_DISPLAYED] as? Bool ?? false
+        data?[TargetConstants.EventDataKeys.IS_LOCATION_DISPLAYED] as? Bool ?? false
     }
 
     /// Returns true if the event is location clicked request event
     var isLocationClickedEvent: Bool {
-        return data?[TargetConstants.EventDataKeys.IS_LOCATION_CLICKED] as? Bool ?? false
+        data?[TargetConstants.EventDataKeys.IS_LOCATION_CLICKED] as? Bool ?? false
+    }
+
+    /// Returns true if the event is a raw execute or notification event
+    var isRawEvent: Bool {
+        data?[TargetConstants.EventDataKeys.IS_RAW_EVENT] as? Bool ?? false
     }
 
     /// Returns true if this event is a reset experience request event
     var isResetExperienceEvent: Bool {
-        return data?[TargetConstants.EventDataKeys.RESET_EXPERIENCE] as? Bool ?? false
+        data?[TargetConstants.EventDataKeys.RESET_EXPERIENCE] as? Bool ?? false
     }
 
     /// Returns true if this event is a clear prefetch request event
     var isClearPrefetchCache: Bool {
-        return data?[TargetConstants.EventDataKeys.CLEAR_PREFETCH_CACHE] as? Bool ?? false
+        data?[TargetConstants.EventDataKeys.CLEAR_PREFETCH_CACHE] as? Bool ?? false
+    }
+
+    /// Reads the Target `environmentId` from the event data
+    var environmentId: Int64 {
+        data?[TargetConstants.EventDataKeys.ENVIRONMENT_ID] as? Int64 ?? 0
+    }
+
+    /// Returns error message in the response event
+    var error: String? {
+        guard let error = data?[TargetConstants.EventDataKeys.RESPONSE_ERROR] as? String else {
+            return nil
+        }
+        return !error.isEmpty ? error : nil
+    }
+
+    /// Decode an instance of given type from the event data.
+    /// - Parameter key: Event data key, default value is nil.
+    /// - Returns: Optional type instance
+    func getTypedData<T: Decodable>(for key: String? = nil) -> T? {
+        let key = key ?? ""
+        guard
+            let jsonObject = !key.isEmpty ? data?[key] : data as Any,
+            let jsonData = try? JSONSerialization.data(withJSONObject: jsonObject)
+        else {
+            return nil
+        }
+        return try? JSONDecoder().decode(T.self, from: jsonData)
     }
 }

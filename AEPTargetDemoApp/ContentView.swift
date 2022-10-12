@@ -22,81 +22,97 @@ struct ContentView: View {
     @State var updatedSessionId: String = ""
     @State var tntId: String = ""
     @State var updatedTntId: String = ""
+    @State var notificationTokens: [(String, String)] = []
     @State var griffonUrl: String = TestConstants.GRIFFON_URL
     @State var fullscreenMessage: FullscreenPresentable?
+    
     var body: some View {
         ScrollView {
-            VStack(alignment: .center, spacing: nil, content: {
-                Group {
+            LazyVStack(alignment: .center, spacing: nil, content: {
+                Section(header: CustomSectionHeader(title: "Assurance", bgColor: Color(UIColor.lightGray))) {
                     TextField("Griffon URL", text: $griffonUrl).multilineTextAlignment(.center)
                     Button("Connect to griffon") {
                         startGriffon()
                     }.padding(10)
 
-                    Button("Prefetch") {
-                        prefetch()
-                    }.padding(10)
-
-                    Button("GetLocations (using contentCallback)") {
-                        getLocations1()
-                    }.padding(10)
-
-                    Button("GetLocations (using contentWithDataCallback)") {
-                        getLocations2()
-                    }.padding(10)
-
-                    Button("Locations displayed") {
-                        locationDisplayed()
-                    }.padding(10)
-
-                    Button("Location clicked") {
-                        locationClicked()
-                    }.padding(10)
-
-                    Button("Reset Experience") {
-                        resetExperience()
-                    }.padding(10)
                 }
+                Section(header: CustomSectionHeader(title: "Target APIs", bgColor: Color(UIColor.lightGray))) {
+                    Group {
+                        Button("Prefetch") {
+                            prefetch()
+                        }.padding(10)
 
-                Group {
-                    Text("Session Id - \(sessionId)")
-                    Button("Get Session Id") {
-                        getSessionId()
-                    }.padding(10)
+                        Button("GetLocations (using contentCallback)") {
+                            getLocations1()
+                        }.padding(10)
 
-                    TextField("Please enter Session Id", text: $updatedSessionId).multilineTextAlignment(.center)
-                    Button("Set Session Id") {
-                        setSessionId()
-                    }.padding(10)
-                    
-                    Text("Third Party ID - \(thirdPartyId)")
-                    Button("Get Third Party Id") {
-                        getThirdPartyId()
-                    }.padding(10)
-                    
-                    TextField("Please enter thirdPartyId", text: $updatedThirdPartyId).multilineTextAlignment(.center)
-                    Button("Set Third Party Id") {
-                        setThirdPartyId()
-                    }.padding(10)
+                        Button("GetLocations (using contentWithDataCallback)") {
+                            getLocations2()
+                        }.padding(10)
+
+                        Button("Locations displayed") {
+                            locationDisplayed()
+                        }.padding(10)
+
+                        Button("Location clicked") {
+                            locationClicked()
+                        }.padding(10)
+
+                        Button("Reset Experience") {
+                            resetExperience()
+                        }.padding(10)
+                    }
+
+                    Group {
+                        Text("Session Id - \(sessionId)")
+                        Button("Get Session Id") {
+                            getSessionId()
+                        }.padding(10)
+
+                        TextField("Please enter Session Id", text: $updatedSessionId).multilineTextAlignment(.center)
+                        Button("Set Session Id") {
+                            setSessionId()
+                        }.padding(10)
+                        
+                        Text("Third Party ID - \(thirdPartyId)")
+                        Button("Get Third Party Id") {
+                            getThirdPartyId()
+                        }.padding(10)
+                        
+                        TextField("Please enter thirdPartyId", text: $updatedThirdPartyId).multilineTextAlignment(.center)
+                        Button("Set Third Party Id") {
+                            setThirdPartyId()
+                        }.padding(10)
+                    }
+                    Group {
+                        Text("Tnt id - \(tntId)")
+                        Button("Get Tnt Id") {
+                            getTntId()
+                        }.padding(10)
+                        
+                        TextField("Please enter tntId", text: $updatedTntId).multilineTextAlignment(.center)
+                        Button("Set Tnt Id") {
+                            setTntId()
+                        }.padding(10)
+
+                        Button("Clear prefetch cache") {
+                            clearPrefetchCache()
+                        }.padding(10)
+
+                        Button("Enter Preview") {
+                            enterPreview()
+                        }.padding(10)
+                    }
                 }
-                Group {
-                    Text("Tnt id - \(tntId)")
-                    Button("Get Tnt Id") {
-                        getTntId()
-                    }.padding(10)
-                    
-                    TextField("Please enter tntId", text: $updatedTntId).multilineTextAlignment(.center)
-                    Button("Set Tnt Id") {
-                        setTntId()
+                Section(header: CustomSectionHeader(title: "Target Raw APIs", bgColor: Color(UIColor.lightGray))) {
+                    Button("Execute Raw Request") {
+                        executeRawRequest()
                     }.padding(10)
 
-                    Button("Clear prefetch cache") {
-                        clearPrefetchCache()
+                    Button("Send Raw Notifications") {
+                        sendRawNotifications()
                     }.padding(10)
 
-                    Button("Enter Preview") {
-                        enterPreview()
-                    }.padding(10)
                 }
             })
         }
@@ -229,6 +245,101 @@ struct ContentView: View {
     
     func enterPreview() {
         MobileCore.collectLaunchInfo(["adb_deeplink": TestConstants.DEEP_LINK])
+    }
+    
+    func executeRawRequest() {
+        Target.executeRawRequest([
+            "property": [
+                "token": "ccc7cdb3-c67a-6126-10b3-65d7f4d32b69"
+            ],
+            "execute": [
+                "mboxes": [
+                    [
+                        "index": 0,
+                        "name": "aep-loc-1",
+                        "parameters": [
+                            "mbox_parameter_key1": "mbox_parameter_value1"
+                        ]
+                    ],
+                    [
+                        "index": 1,
+                        "name": "aep-loc-2",
+                        "parameters": [
+                            "mbox_parameter_key2": "mbox_parameter_value2"
+                        ]
+                    ]
+                ]
+            ]
+        ]) { responseDict, err in
+            if let err = err {
+                print("Error: \(err.localizedDescription)")
+                return
+            }
+            guard let responseDict = responseDict,
+                  !responseDict.isEmpty else {
+                return
+            }
+            print("Execute Raw Response:")
+            print(PrettyDictionary.prettify(responseDict))
+            guard let execute = responseDict["execute"] as? [String: Any], let executeMboxes = execute["mboxes"] as? [[String: Any]] else {
+                return
+            }
+            
+            for mbox in executeMboxes {
+                if let mboxName = mbox["name"] as? String, let metrics = mbox["metrics"] as? [[String: Any]],
+                    !metrics.isEmpty, let token = metrics[0]["eventToken"] as? String {
+                    notificationTokens.append((mboxName, token))
+                }
+            }
+        }
+    }
+    
+    func sendRawNotifications() {
+        var notifications: [[String: Any]] = []
+        var i: Int = 0
+        for token in notificationTokens {
+            let notification: [String: Any] = [
+                "id": String(i),
+                "timestamp": Int64(Date().timeIntervalSince1970 * 1000.0),
+                "type": "click",
+                "mbox": [
+                    "name": token.0
+                ],
+                "tokens": [
+                    token.1
+                ],
+                "parameters": [
+                    "mbox_parameter_key3": "mbox_parameter_value3"
+                ]
+            ]
+            notifications.append(notification)
+            i += 1
+        }
+        guard !notifications.isEmpty else {
+            return
+        }
+        Target.sendRawNotifications([
+            "notifications": notifications
+        ])
+        notificationTokens.removeAll()
+    }
+}
+
+struct CustomSectionHeader: View {
+    let title: String
+    let bgColor: Color
+
+    var body: some View {
+        VStack {
+            Spacer()
+            HStack {
+                Spacer()
+                Text(title)
+                Spacer()
+            }
+            Spacer()
+        }
+        .background(bgColor)
     }
 }
 

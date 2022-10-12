@@ -623,4 +623,281 @@ class TargetPublicAPITests: XCTestCase {
         Target.setPreviewRestartDeepLink(URL(string: "com.adobe.targetpreview://?at_preview_token=123_xggdfeTGa")!)
         wait(for: [expectation], timeout: 1)
     }
+
+    func testExecuteRawRequest_batchRequest() throws {
+        let expectation = XCTestExpectation(description: "executeRawRequest should dispatch target request content event with correct data.")
+        expectation.assertForOverFulfill = true
+
+        // Mocks
+        let requestData: [String: Any] = [
+            "execute": [
+                "mboxes": [
+                    [
+                        "index": 0,
+                        "name": "Drink_1",
+                        "parameters": [
+                            "mbox_parameter_key1": "mbox_parameter_value1"
+                        ]
+                    ],
+                    [
+                        "index": 1,
+                        "name": "Drink_2",
+                        "parameters": [
+                            "mbox_parameter_key2": "mbox_parameter_value2"
+                        ]
+                    ]
+                ]
+            ]
+        ]
+        
+        EventHub.shared.getExtensionContainer(MockExtension.self)?.eventListeners.clear()
+        EventHub.shared.getExtensionContainer(MockExtension.self)?.registerListener(type: EventType.target, source: EventSource.requestContent) { event in
+            guard
+                let eventData = event.data,
+                let execute = eventData["execute"] as? [String: Any],
+                let mboxes = execute["mboxes"] as? [[String: Any]],
+                let isRawEvent = eventData["israwevent"] as? Bool
+            else {
+                XCTFail("Event should have a valid Target raw request data.")
+                return
+            }
+            
+            XCTAssertTrue(isRawEvent)
+            XCTAssertNotNil(mboxes)
+            XCTAssertEqual(2, mboxes.count)
+            XCTAssertEqual(0, mboxes[0]["index"] as? Int)
+            XCTAssertEqual("Drink_1", mboxes[0]["name"] as? String)
+            let mboxes0Parameters = mboxes[0]["parameters"] as? [String: String]
+            XCTAssertNotNil(mboxes0Parameters)
+            XCTAssertEqual(1, mboxes0Parameters?.count)
+            XCTAssertEqual("mbox_parameter_value1", mboxes0Parameters?["mbox_parameter_key1"])
+            XCTAssertEqual(1, mboxes[1]["index"] as? Int)
+            XCTAssertEqual("Drink_2", mboxes[1]["name"] as? String)
+            let mboxes1Parameters = mboxes[1]["parameters"] as? [String: String]
+            XCTAssertNotNil(mboxes1Parameters)
+            XCTAssertEqual(1, mboxes1Parameters?.count)
+            XCTAssertEqual("mbox_parameter_value2", mboxes1Parameters?["mbox_parameter_key2"])
+
+            expectation.fulfill()
+        }
+
+        Target.executeRawRequest(requestData) { response, err in
+            // process response
+        }
+
+        wait(for: [expectation], timeout: 2)
+    }
+    
+    func testExecuteRawRequest_prefetchRequest() throws {
+        let expectation = XCTestExpectation(description: "executeRawRequest should dispatch target request content event with correct data.")
+        expectation.assertForOverFulfill = true
+
+        // Mocks
+        let requestData: [String: Any] = [
+            "prefetch": [
+                "mboxes": [
+                    [
+                        "index": 0,
+                        "name": "Drink_1",
+                        "parameters": [
+                            "mbox_parameter_key1": "mbox_parameter_value1"
+                        ]
+                    ],
+                    [
+                        "index": 1,
+                        "name": "Drink_2",
+                        "parameters": [
+                            "mbox_parameter_key2": "mbox_parameter_value2"
+                        ]
+                    ]
+                ]
+            ]
+        ]
+        
+        EventHub.shared.getExtensionContainer(MockExtension.self)?.eventListeners.clear()
+        EventHub.shared.getExtensionContainer(MockExtension.self)?.registerListener(type: EventType.target, source: EventSource.requestContent) { event in
+            guard
+                let eventData = event.data,
+                let execute = eventData["prefetch"] as? [String: Any],
+                let mboxes = execute["mboxes"] as? [[String: Any]],
+                let isRawEvent = eventData["israwevent"] as? Bool
+            else {
+                XCTFail("Event should have a valid Target raw request data.")
+                return
+            }
+            
+            XCTAssertTrue(isRawEvent)
+            XCTAssertNotNil(mboxes)
+            XCTAssertEqual(2, mboxes.count)
+            XCTAssertEqual(0, mboxes[0]["index"] as? Int)
+            XCTAssertEqual("Drink_1", mboxes[0]["name"] as? String)
+            let mboxes0Parameters = mboxes[0]["parameters"] as? [String: String]
+            XCTAssertNotNil(mboxes0Parameters)
+            XCTAssertEqual(1, mboxes0Parameters?.count)
+            XCTAssertEqual("mbox_parameter_value1", mboxes0Parameters?["mbox_parameter_key1"])
+            XCTAssertEqual(1, mboxes[1]["index"] as? Int)
+            XCTAssertEqual("Drink_2", mboxes[1]["name"] as? String)
+            let mboxes1Parameters = mboxes[1]["parameters"] as? [String: String]
+            XCTAssertNotNil(mboxes1Parameters)
+            XCTAssertEqual(1, mboxes1Parameters?.count)
+            XCTAssertEqual("mbox_parameter_value2", mboxes1Parameters?["mbox_parameter_key2"])
+
+            expectation.fulfill()
+        }
+
+        Target.executeRawRequest(requestData) { response, err in
+            // process response
+        }
+
+        wait(for: [expectation], timeout: 2)
+    }
+    
+    func testExecuteRawRequest_withEmptyRequestDictionary() throws {
+        let expectation = XCTestExpectation(description: "executeRawRequest should not dispatch a target event with empty request dictionary.")
+        expectation.isInverted = true
+
+        EventHub.shared.getExtensionContainer(MockExtension.self)?.eventListeners.clear()
+        EventHub.shared.getExtensionContainer(MockExtension.self)?.registerListener(type: EventType.target, source: EventSource.requestContent) { _ in
+            expectation.fulfill()
+        }
+
+        Target.executeRawRequest([:]) { response, err in
+            // process response
+        }
+
+        wait(for: [expectation], timeout: 2)
+    }
+
+    func testExecuteRawRequest_withNoPrefetchOrExecuteInRequestDictionary() throws {
+        let expectation = XCTestExpectation(description: "executeRawRequest should not dispatch a target request with empty mbox name in the mboxes array.")
+        expectation.isInverted = true
+
+        // Mocks
+        let requestData: [String: Any] = [
+            "request": [
+                "mboxes": [
+                    [
+                        "index": 0,
+                        "name": "Drink_1",
+                        "parameters": [
+                            "mbox_parameter_key1": "mbox_parameter_value1"
+                        ]
+                    ],
+                    [
+                        "index": 1,
+                        "name": "Drink_2",
+                        "parameters": [
+                            "mbox_parameter_key2": "mbox_parameter_value2"
+                        ]
+                    ]
+                ]
+            ]
+        ]
+        
+        EventHub.shared.getExtensionContainer(MockExtension.self)?.eventListeners.clear()
+        EventHub.shared.getExtensionContainer(MockExtension.self)?.registerListener(type: EventType.target, source: EventSource.requestContent) { _ in
+            expectation.fulfill()
+        }
+
+        Target.executeRawRequest(requestData) { response, err in
+            // process response
+        }
+
+        wait(for: [expectation], timeout: 2)
+    }
+
+    func testSendRawNotifications() throws {
+        let expectation = XCTestExpectation(description: "Should dispatch a target request content event for sending raw notification")
+        expectation.assertForOverFulfill = true
+        
+        let requestData: [String: Any] = [
+            "notifications": [
+                [
+                    "id": 1,
+                    "timestamp": 1665133623764,
+                    "type": "click",
+                    "mbox": [
+                        "name": "Drink_1",
+                    ],
+                    "tokens": [
+                        "LgG0+YDMHn4X5HqGJVoZ5g=="
+                    ],
+                    "profileParameters": [
+                        "subscription": "premium"
+                    ]
+                ]
+            ]
+        ]
+        
+        EventHub.shared.getExtensionContainer(MockExtension.self)?.eventListeners.clear()
+        EventHub.shared.getExtensionContainer(MockExtension.self)?.registerListener(type: EventType.target, source: EventSource.requestContent) { event in
+            guard
+                let eventData = event.data,
+                let notifications = eventData["notifications"] as? [[String: Any]],
+                let isRawEvent = eventData["israwevent"] as? Bool
+            else {
+                XCTFail("Event should have a valid Target raw notification data.")
+                return
+            }
+        
+            XCTAssertTrue(isRawEvent)
+            XCTAssertEqual(1, notifications.count)
+            let notificationsMbox = notifications[0]["mbox"] as? [String: Any]
+            XCTAssertEqual("Drink_1", notificationsMbox?["name"] as? String)
+            let tokens = notifications[0]["tokens"] as? [String]
+            XCTAssertEqual(1, tokens?.count)
+            XCTAssertEqual("LgG0+YDMHn4X5HqGJVoZ5g==", tokens?[0])
+            let profileParameters = notifications[0]["profileParameters"] as? [String: String]
+            XCTAssertEqual(1, profileParameters?.count)
+            XCTAssertEqual("premium", profileParameters?["subscription"])
+            expectation.fulfill()
+        }
+
+        
+        Target.sendRawNotifications(requestData)
+        wait(for: [expectation], timeout: 2)
+    }
+    
+    func testSendRawNotifications_withEmptyRequestDictionary() throws {
+        let expectation = XCTestExpectation(description: "Should not dispatch a target request content event for sending raw notification")
+        expectation.isInverted = true
+        
+        EventHub.shared.getExtensionContainer(MockExtension.self)?.eventListeners.clear()
+        EventHub.shared.getExtensionContainer(MockExtension.self)?.registerListener(type: EventType.target, source: EventSource.requestContent) { _ in
+            expectation.fulfill()
+        }
+
+        Target.sendRawNotifications([:])
+
+        wait(for: [expectation], timeout: 2)
+    }
+    
+    func testSendRawNotifications_withNoNotificationsInRequestDictionary() throws {
+        let expectation = XCTestExpectation(description: "Should not dispatch a target request content event for sending raw notification")
+        expectation.isInverted = true
+        
+        let requestData: [String: Any] = [
+            "id": 1,
+            "timestamp": 1665133623764,
+            "type": "click",
+            "mbox": [
+                "name": "Drink_1",
+            ],
+            "tokens": [
+                "LgG0+YDMHn4X5HqGJVoZ5g=="
+            ],
+            "profileParameters": [
+                "subscription": "premium"
+            ]
+        ]
+        
+        EventHub.shared.getExtensionContainer(MockExtension.self)?.eventListeners.clear()
+        EventHub.shared.getExtensionContainer(MockExtension.self)?.registerListener(type: EventType.target, source: EventSource.requestContent) { _ in
+            expectation.fulfill()
+        }
+
+        Target.sendRawNotifications(requestData)
+
+        wait(for: [expectation], timeout: 2)
+    }
 }
