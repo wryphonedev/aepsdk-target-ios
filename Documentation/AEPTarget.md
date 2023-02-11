@@ -2,103 +2,22 @@
 - [Table of Contents](#table-of-contents)
 - [Target API reference](#target-api-reference)
   - [prefetchContent](#prefetchcontent)
-    - [Swift](#swift-prefetchcontent)
-      - [Syntax](#swift-syntax-prefetchcontent)
-      - [Example](#swift-example-prefetchcontent)
-    - [Objective C](#objc-prefetchcontent)
-      - [Syntax](#objc-syntax-prefetchcontent)
-      - [Example](#objc-example-prefetchcontent)
   - [retrieveLocationContent](#retrievelocationcontent)
-    - [Swift](#swift-retrievelocationcontent)
-      - [Syntax](#swift-syntax-retrievelocationcontent)
-      - [Example](#swift-example-retrievelocationcontent)
-    - [Objective C](#objc-retrievelocationcontent)
-      - [Syntax](#objc-syntax-retrievelocationcontent)
-      - [Example](#objc-example-retrievelocationcontent)
   - [setThirdPartyId](#setthirdpartyid)
-    - [Swift](#swift-setthirdpartyid)
-      - [Syntax](#swift-syntax-setthirdpartyid)
-      - [Example](#swift-example-setthirdpartyid)
-    - [Objective C](#objc-setthirdpartyid)
-      - [Syntax](#objc-syntax-setthirdpartyid)
-      - [Example](#objc-example-setthirdpartyid)
   - [getThirdPartyId](#getthirdpartyid)
-    - [Swift](#swift-getthirdpartyid)
-      - [Syntax](#swift-syntax-getthirdpartyid)
-      - [Example](#swift-example-getthirdpartyid)
-    - [Objective C](#objc-getthirdpartyid)
-      - [Syntax](#objc-syntax-getthirdpartyid)
-      - [Example](#objc-example-getthirdpartyid)
   - [setTntId](#settntid)
-    - [Swift](#swift-settntid)
-      - [Syntax](#swift-syntax-settntid)
-      - [Example](#swift-example-settntid)
-   - [Objective C](#objc-settntid)
-      - [Syntax](#objc-syntax-settntid)
-      - [Example](#objc-example-settntid)
   - [getTntId](#gettntid)
-    - [Swift](#swift-gettntid)
-      - [Syntax](#swift-syntax-gettntid)
-      - [Example](#swift-example-gettntid)
-    - [Objective C](#objc-gettntid)
-      - [Syntax](#objc-syntax-gettntid)
-      - [Example](#objc-example-gettntid)
   - [setSessionId](#setsessionid)
-    - [Swift](#swift-setsessionid)
-      - [Syntax](#swift-syntax-setsessionid)
-      - [Example](#swift-example-setsessionid)
-   - [Objective C](#objc-setsessionid)
-      - [Syntax](#objc-syntax-setsessionid)
-      - [Example](#objc-example-setsessionid)
   - [getSessionId](#getsessionid)
-    - [Swift](#swift-getsessionid)
-      - [Syntax](#swift-syntax-getsessionid)
-      - [Example](#swift-example-getsessionid)
-    - [Objective C](#objc-getsessionid)
-      - [Syntax](#objc-syntax-getsessionid)
-      - [Example](#objc-example-getsessionid)
   - [resetExperience](#resetexperience)
-    - [Swift](#swift-resetexperience)
-      - [Syntax](#swift-syntax-resetexperience)
-      - [Example](#swift-example-resetexperience)
-    - [Objective C](#objc-resetexperience)
-      - [Syntax](#objc-syntax-resetexperience)
-      - [Example](#objc-example-resetexperience)
   - [clearPrefetchCache](#clearprefetchcache)
-    - [Swift](#swift-clearprefetchcache)
-      - [Syntax](#swift-syntax-clearprefetchcache)
-      - [Example](#swift-example-clearprefetchcache)
-    - [Objective C](#objc-clearprefetchcache)
-      - [Syntax](#objc-syntax-clearprefetchcache)
-      - [Example](#objc-example-clearprefetchcache)
   - [setPreviewRestartDeepLink](#setpreviewrestartdeeplink)
-    - [Swift](#swift-setpreviewrestartdeeplink)
-      - [Syntax](#swift-syntax-setpreviewrestartdeeplink)
-      - [Example](#swift-example-setpreviewrestartdeeplink)
-    - [Objective C](#objc-setpreviewrestartdeeplink)
-      - [Syntax](#objc-syntax-setpreviewrestartdeeplink)
-      - [Example](#objc-example-setpreviewrestartdeeplink)
   - [displayedLocations](#displayedlocations)
-    - [Swift](#swift-displayedlocations)
-      - [Syntax](#swift-syntax-displayedlocations)
-      - [Example](#swift-example-displayedlocations)
-    - [Objective C](#objc-displayedlocations)
-      - [Syntax](#objc-syntax-displayedlocations)
-      - [Example](#objc-example-displayedlocations)
   - [clickedLocation](#clickedlocation)
-    - [Swift](#swift-clickedlocation)
-      - [Syntax](#swift-syntax-clickedlocation)
-      - [Example](#swift-example-clickedlocation)
-    - [Objective C](#objc-clickedlocation)
-      - [Syntax](#objc-syntax-clickedlocation)
-      - [Example](#objc-example-clickedlocation)
-  - [Visual preview](#visual-preview)
-    - [Swift](#swift-visual-preview)
-      - [Syntax](#swift-syntax-visual-preview)
-      - [Example](#swift-example-visual-preview)
-    - [Objective C](#objc-visual-preview)
-      - [Syntax](#objc-syntax-visual-preview)
-      - [Example](#objc-example-visual-preview)
+- [Target Raw API reference](#target-raw-api-reference)
+  - [executeRawRequest](#executerawrequest)
+  - [sendRawNotification](#sendrawnotification)
+- [Visual preview](#visual-preview)
 
 # Target API reference
 This document details all the APIs provided by Target, along with sample code snippets on how to properly use the APIs.
@@ -106,7 +25,7 @@ This document details all the APIs provided by Target, along with sample code sn
 ## prefetchContent
 This API sends a prefetch request to your configured Target server with the prefetch objects array and the specified target parameters. 
 
-### Swift 
+### Swift
 
 #### Syntax 
 
@@ -794,19 +713,227 @@ static func clickedLocation(_ name: String, targetParameters: TargetParameters?)
 ```
 
 
-## Viaual preview
+# Target Raw API reference
+This document details all the raw APIs provided by Target, along with sample code snippets on how to properly use the APIs.
 
-The visual preview mode allows you to easily perform end-to-end QA activities by enrolling and previewing these activities on your device. This mode does not require a specialized testing set up. To get started, set up a URL scheme and generate the preview links.
-
-To enter the preview visual mode, use the `collectLaunchInfo` API to enable the mode and click the red floating button that appears on the app screen.
+## executeRawRequest
+This API can be used to retrieve prefetch or execute response for mbox locations from the configured Target server. 
 
 ### Swift 
 
 #### Syntax 
 
 ```swift
-public static func collectLaunchInfo(_ userInfo: [String: Any])
+static func executeRawRequest(_ request: [[String: Any]], _ completion: @escaping ([[String: Any]]?, Error?) -> Void)
 ```
+
+  - *request* - is a dictionary containing prefetch or execute request data in the Target v1 delivery API request format. 
+  - *completion* - is the callback which will be invoked with the Target response data or error message after the request is completed. 
+
+#### Example
+
+```swift
+    let request: [String: Any] = [ 
+        "execute": [ 
+            "mboxes": [ 
+                [
+                    "index": 0, 
+                    "name": "mbox1", 
+                    "parameters": [ 
+                        "mbox_parameter_key1": "mbox_parameter_value1" 
+                    ], 
+                    "profileParameters": [ 
+                        "subscription": "premium" 
+                    ], 
+                    "order": [ 
+                        "id": "id1", 
+                        "total": 100.34, 
+                        "purchasedProductIds":[ 
+                            "pId1"
+                        ] 
+                    ], 
+                    "product": [ 
+                        "id": "pId1", 
+                        "categoryId": "cId1" 
+                    ]
+                ], 
+                [
+                    "index": 1, 
+                    "name": "mbox2", 
+                    "parameters": [ 
+                        "mbox_parameter_key2": "mbox_parameter_value2" 
+                    ]
+                ]
+            ]
+        ]
+    ] 
+
+Target.executeRawRequest(request) { responseData, error in 
+    if error != nil { 
+        return 
+    } 
+    guard let responseData = responseData, 
+          !responseData.isEmpty else { 
+        return 
+    } 
+
+    // handle the response   
+
+} 
+```
+
+### Objective C
+
+#### Syntax 
+
+```objectivec
++ (void)executeRawRequest:(nonnull NSDictionary<NSString *, id> *)request completion:(void (nonnull ^)(nullable NSDictionary<NSString *, id> *, nullable NSError *))completion; 
+```
+
+  - *request* : is a dictionary containing prefetch or execute request data in the Target v1 delivery API request format. 
+  - *completion* : is the  the callback which will be invoked with the Target response data or error message after the request is completed.
+
+#### Example
+
+```objectivec
+    NSDictionary *request = @{ 
+        @"execute": @{ 
+            @"mboxes": @[ 
+                @{ 
+                    @"index": @(0), 
+                    @"name": @"mbox1", 
+                    @"parameters": @{ 
+                        @"mbox_parameter_key1": @"mbox_parameter_value1" 
+                    }, 
+                    @"profileParameters": @{ 
+                        @"subscription": @"premium" 
+                    }, 
+                    @"order": @{ 
+                        @"id": @"id1", 
+                        @"total": @(100.34), 
+                        @"purchasedProductIds": @[ 
+                            @"pId1" 
+                        ]
+                    }, 
+                    @"product": @{ 
+                        @"id": @"pId1", 
+                        @"categoryId": @"cId1" 
+                    } 
+                }, 
+                @{ 
+                    @"index": @(1), 
+                    @"name": @"mbox2", 
+                    @"parameters": @{ 
+                        @"mbox_parameter_key2": @"mbox_parameter_value2" 
+                    } 
+
+                } 
+
+            ] 
+
+        } 
+
+    }; 
+
+    [AEPMobileTarget executeRawRequest:request completion:^(NSDictionary<NSString *,id> * _Nullable data, NSError * _Nullable err) { 
+        if (err != nil) { 
+            NSLog(@"Error: %@", err); 
+            return; 
+        } 
+
+        NSLog(@"Target raw response >> %@", data); 
+
+        // handle response 
+    }]; 
+```
+
+
+## sendrawnotification
+This API sends notification request(s) to the configured Target server for display or click notifications. 
+
+The event tokens required for the Target display or click notifications can be retrieved from the response of a prior `executeRawRequest` API call for prefetch or execute.  
+
+### Swift 
+
+#### Syntax 
+
+```swift
+static func sendRawNotifications(_ request: [String: Any]) 
+```
+
+  - *request* - is a dictionary containing notifications data in the Target v1 delivery API request format.
+ 
+#### Example
+
+```swift
+    var notifications: [[String: Any]] = [] 
+
+    let notification: [String: Any] = [
+        "id": "0", 
+        "timestamp": Int64(Date().timeIntervalSince1970 * 1000.0), 
+        "type": "click", 
+        "mbox": [ 
+            "name": "mbox1" 
+        ], 
+        "tokens": [ 
+            "someClickToken" 
+        ], 
+        "parameters": [ 
+            "mbox_parameter_key3": "mbox_parameter_value3" 
+        ] 
+
+    ] 
+    notifications.append(notification) 
+
+    Target.sendRawNotifications([ 
+        "notifications": notifications 
+    ]) 
+```
+
+### Objective C
+
+#### Syntax 
+
+```objectivec
++ (void)sendRawNotifications:(nonnull NSDictionary<NSString *, id> *)request;  
+```
+
+  - *request* : is a dictionary containing notifications data in the Target v1 delivery API request format.
+
+#### Example
+
+```objectivec
+    NSMutableArray *notifications = [[NSMutableArray alloc] init]; 
+
+    NSDictionary* notification = @{ 
+
+        @"id": @"0", 
+        @"timestamp": @((long)([[NSDate date] timeIntervalSince1970] * 1000.0)), 
+        @"type": @"click", 
+        @"mbox": @{ 
+            @"name": @"mbox1", 
+        }, 
+        @"tokens": @[ @"someClickToken" ], 
+        @"parameters": @{ 
+            @"mbox_parameter_key3": @"mbox_parameter_value3" 
+        } 
+
+    }; 
+    [notifications addObject:notification]; 
+
+    NSDictionary *request = @{ 
+      @"notifications": notifications 
+    }; 
+    [AEPMobileTarget sendRawNotifications:request];  
+```
+
+# Visual preview
+
+The visual preview mode allows you to easily perform end-to-end QA of activities by enrolling and previewing these activities on your device. This mode does not require a specialized testing set up. To get started, set up a URL scheme and generate the preview links. For more information on setting up URL schemes, see [Defining a Custom URL Scheme for Your App](https://developer.apple.com/documentation/xcode/defining-a-custom-url-scheme-for-your-app) for iOS and see [Create Deep Links to App Content](https://developer.android.com/training/app-links/deep-linking) for Android. You can also set an application deep link in the SDK that can be triggered when selections are made in the preview mode by using the `setPreviewRestartDeeplink` API.
+
+To enter the preview visual mode, use the Mobile Core's `collectLaunchInfo` API to enable the mode and click the red floating button that appears on the app screen.
+
+### Swift 
 
 #### Example
 
@@ -815,12 +942,6 @@ public static func collectLaunchInfo(_ userInfo: [String: Any])
 ```
 
 ### Objective C
-
-#### Syntax 
-
-```objectivec
-+ (void) collectLaunchInfo: (nonnull NSDictionary*) userInfo;
-```
 
 #### Example
 
