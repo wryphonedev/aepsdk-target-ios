@@ -27,7 +27,6 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
         MobileCore.setLogLevel(.trace)
         MobileCore.registerExtensions([Lifecycle.self, Identity.self, Target.self, Signal.self, Analytics.self, Assurance.self])
         MobileCore.configureWith(appId: TestConstants.LAUNCH_ID)
-        MobileCore.updateConfigurationWith(configDict: ["target.previewEnabled": true])
 
         return true
     }

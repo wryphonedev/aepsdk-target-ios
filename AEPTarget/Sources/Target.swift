@@ -163,7 +163,8 @@ public class Target: NSObject, Extension {
             return
         }
 
-        guard let isPreviewEnabled = configSharedState[TargetConstants.Configuration.SharedState.Keys.TARGET_PREVIEW_ENABLED] as? Bool, isPreviewEnabled else {
+        let isPreviewEnabled = configSharedState[TargetConstants.Configuration.SharedState.Keys.TARGET_PREVIEW_ENABLED] as? Bool ?? true
+        if !isPreviewEnabled {
             Log.error(label: Target.LOG_TAG, "Target preview is disabled, please change the configuration and try again.")
             return
         }
