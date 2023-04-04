@@ -9,6 +9,7 @@
  OF ANY KIND, either express or implied. See the License for the specific language
  governing permissions and limitations under the License.
  */
+#if os(iOS)
 import Foundation
 
 /// `TargetPrefetch` class, used for specifying a mbox location.
@@ -26,3 +27,4 @@ public class TargetPrefetch: NSObject, Codable {
         self.targetParameters = targetParameters
     }
 }
+#endif

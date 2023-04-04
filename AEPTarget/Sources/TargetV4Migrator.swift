@@ -9,7 +9,7 @@
  OF ANY KIND, either express or implied. See the License for the specific language
  governing permissions and limitations under the License.
  */
-
+#if os(iOS)
 import AEPServices
 import Foundation
 
@@ -57,3 +57,4 @@ enum TargetV4Migrator {
         Log.trace(label: Target.LOG_TAG, "Target V4 data migration completed.")
     }
 }
+#endif

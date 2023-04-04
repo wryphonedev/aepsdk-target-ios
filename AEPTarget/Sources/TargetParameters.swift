@@ -9,6 +9,7 @@
  OF ANY KIND, either express or implied. See the License for the specific language
  governing permissions and limitations under the License.
  */
+#if os(iOS)
 import Foundation
 
 /// Target parameter class, used for specifying custom parameters to be sent in Target requests,
@@ -33,3 +34,4 @@ public class TargetParameters: NSObject, Codable {
         self.product = product
     }
 }
+#endif
