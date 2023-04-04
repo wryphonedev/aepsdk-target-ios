@@ -9,7 +9,7 @@
  OF ANY KIND, either express or implied. See the License for the specific language
  governing permissions and limitations under the License.
  */
-
+#if os(iOS)
 import AEPCore
 import AEPServices
 import Foundation
@@ -238,3 +238,4 @@ class TargetPreviewManager: PreviewManager {
         return Event(name: "Target Preview Lifecycle", type: EventType.target, source: EventSource.responseContent, data: eventData)
     }
 }
+#endif
