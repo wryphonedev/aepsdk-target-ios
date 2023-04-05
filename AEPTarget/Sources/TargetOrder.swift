@@ -9,6 +9,7 @@
  OF ANY KIND, either express or implied. See the License for the specific language
  governing permissions and limitations under the License.
  */
+#if os(iOS)
 import Foundation
 
 /// Class for specifying Target order parameters
@@ -29,3 +30,4 @@ public class TargetOrder: NSObject, Codable {
         self.purchasedProductIds = purchasedProductIds
     }
 }
+#endif
